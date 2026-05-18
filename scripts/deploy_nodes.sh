@@ -11,12 +11,10 @@ dot_sleep () {
 		return
 	fi
 
-	for i in $(seq 10); do
+	for i in $(seq $1); do
 		sleep 1
 		echo -n "."
 	done
-
-	echo
 }
 
 if [ $# -lt 4 ]; then
@@ -27,7 +25,7 @@ fi
 nb_nodes=$1
 walltime=$2
 node_env_file=$3
-db_env-file=$4
+db_env_file=$4
 key_file=$5
 
 if [ $nb_nodes -lt 3 ]; then
@@ -45,11 +43,15 @@ tmpfile=$(mktemp "./lx2k2XXXXXX")
 oarsub -t deploy -l /nodes=$nb_nodes,walltime=$walltime \
 "bash arch_script.sh ${node_env_file} ${db_env_file} ${key_file} && while true; do sleep 1; done" | tee $tmpfile
 
-OAR_JOBID=$(grep OAR_JOB_ID $tmpfile | cut -d " " -f 2)
+OAR_JOBID=$(grep OAR_JOB_ID $tmpfile | cut -d "=" -f 2)
 rm $tmpfile
 
-echo "Waiting a little..."
-dot_sleep 37
+echo "Waiting for nodes..."
+
+while [ ! -f "deploynodes.${OAR_JOBID}" ]; do
+	dot_sleep 37
+	echo "looking for deploynodes.${OAR_JOBID}"
+done
 
 # recover VMs info
 mapfile -t vms < "deploynodes.${OAR_JOBID}"
@@ -90,10 +92,10 @@ while [[ $gtfo -lt 5 ]]; do
 	fi
 
 	echo "Retrying..."
-	vms=$(oarstat -u -f -j ${OAR_JOBID} | grep assigned_hostnames | cut -d "=" -f 2)
-	vms="${vms#[[:space:]]}"
-	vms="${vms%[[:space:]]}"
-	read -r -a vms <<< "$(echo $vms | sed s/\+/,\ /g)"
+	#vms=$(oarstat -u -f -j ${OAR_JOBID} | grep assigned_hostnames | cut -d "=" -f 2)
+	#vms="${vms#[[:space:]]}"
+	#vms="${vms%[[:space:]]}"
+	#read -r -a vms <<< "$(echo $vms | sed s/\+/\ /g)"
 done
 
 echo "nodes are ready!"
