@@ -1,0 +1,6 @@
+{
+    "NLAMBDA": 3,
+    "PEERS": ["big20", "big21", "big22"],
+    "MAXKEY": 100000,
+    "REDISIP": "big1"
+}

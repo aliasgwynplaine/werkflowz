@@ -1,0 +1,6 @@
+{
+    "NLAMBDA": 3,
+    "PEERS": [SUPERSERVERS],
+    "MAXKEY": 100000,
+    "REDISIP": "REDISSERVER"
+}

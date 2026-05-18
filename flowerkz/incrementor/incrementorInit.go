@@ -86,9 +86,9 @@ func (h *incrementorInitHandler) Call(ctx context.Context, input []byte) ([]byte
 	payload := bytes.NewBuffer(data)
 
 	invokeurl := "http://" + os.Getenv("NIGHTCORE_GW_ADDR") + ":8080/function/incrementor"
-	go http.Post(invokeurl, "application/json", payload)
+	go http.Post(invokeurl, "application/json", payload) // todo: check if this is the "good" way to do it
 
-	listener, err := net.Listen("tcp", "0.0.0.0:12345")
+	listener, err := net.Listen("tcp", "0.0.0.0:12345") // todo: randomize port
 
 	if err != nil {
 		panic(err)
