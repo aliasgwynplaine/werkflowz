@@ -61,8 +61,8 @@ echo "Waiting for hostnames to boot..."
 dot_sleep 43
 
 # wait for ssh	
-while [[ $gtfo -lt 5 ]]; do
-	echo "attempting to connect with $vms..."
+while [[ $gtfo -lt $nb_nodes ]]; do
+	#echo "attempting to connect with ${vms[@]}..."
 	gtfo=0
 	declare -A ready
 
@@ -78,20 +78,20 @@ while [[ $gtfo -lt 5 ]]; do
 		fi
 	done
 
-	for vm in ${vms[@]}; do
+	for vm in $nb_nodes; do
 		gtfo=$(( gtfo + ${ready[$vm]} ))
 	done
 
-	if [[ $gtfo -lt 5 ]]; then
-		echo "servers are not ready."
+	if [[ $gtfo -lt $nb_nodes ]]; then
+		echo "vms are not ready."
 		echo "Waiting..."
 		dot_sleep 37
 	else
-		echo "servers ready"
+		echo "vms ready"
 		continue
 	fi
 
-	echo "Retrying..."
+	echo "\nRetrying..."
 	#vms=$(oarstat -u -f -j ${OAR_JOBID} | grep assigned_hostnames | cut -d "=" -f 2)
 	#vms="${vms#[[:space:]]}"
 	#vms="${vms%[[:space:]]}"

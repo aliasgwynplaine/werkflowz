@@ -1,0 +1,9 @@
+{
+    "NB_NODES": 5,
+    "fprocess_mode": "go" ,
+    "fuxmap": [
+	    "incrementorInit",
+	    "incrementor",
+	    "incrementorFinish"
+    ]
+}
