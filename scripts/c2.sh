@@ -8,8 +8,8 @@ usage () {
 	echo
 	echo "commands:"
 	echo "	deploy-nodes <nb> <h:mm:ss> <node-env-file> <db-env-file> <key-file>"
-	echo "	upload-server <nightcore.host>"
-	echo "	upload-app <app> <nighcore.host>"
+	echo "	upload <file> <host>"
+	echo "	upload-to-hosts <file> <file.host>"
 	echo "	run-gateway <func_config.json>"
 	echo "	run-engine <func_config.json>"
 	echo "	run-launcher <ip> <func_id> <fprocess>" # just using go this time
@@ -30,7 +30,6 @@ COMMAND=$1
 
 case "$COMMAND" in
 	deploy-nodes)
-
 		if [ $# -ne 6 ]; then
 			usage
 			exit 2
@@ -39,22 +38,22 @@ case "$COMMAND" in
 		bash deploy_nodes.sh $2 $3 $4 $5 $6
 	;;
 
-	upload-server)
-		echo "upload-server!"
-
-		if [ $# -ne 2 ]; then
+	upload)
+		if [ $# -ne 3 ]; then
 			usage
 			exit 2
 		fi
+
+		bash upload_file.sh $2 $3
 	;;
 
-	upload-app)
-		echo "upload-app!"
-
-		if [ $# -ne 2 ]; then
+	upload-to-hosts)
+		if [ $# -ne 3 ]; then
 			usage
 			exit 2
 		fi
+
+		bash upload_to_hosts.sh $2 $3
 	;;
 
 	run-gateway)
@@ -64,6 +63,8 @@ case "$COMMAND" in
 			usage
 			exit 2
 		fi
+
+		#r
 	;;
 
 	help)

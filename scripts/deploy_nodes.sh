@@ -24,9 +24,9 @@ fi
 
 nb_nodes=$1
 walltime=$2
-node_env_file=$3
-db_env_file=$4
-key_file=$5
+node_env_file=$(realpath $3)
+db_env_file=$(realpath $4)
+key_file=$(realpath $5)
 
 if [ $nb_nodes -lt 3 ]; then
 	echo "Cannot deploy the experiment with less than 3 nodes"
@@ -50,7 +50,7 @@ echo "Waiting for nodes..."
 
 while [ ! -f "deploynodes.${OAR_JOBID}" ]; do
 	dot_sleep 37
-	echo "looking for deploynodes.${OAR_JOBID}"
+	#echo "looking for deploynodes.${OAR_JOBID}"
 done
 
 # recover VMs info
