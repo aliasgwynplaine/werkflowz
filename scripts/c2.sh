@@ -151,10 +151,11 @@ hit)
 	;;
 
 clean-all)
-	find . -type f -maxdepth 1 -regex './workers\.[0-9]+' -delete
-	find . -type f -maxdepth 1 -regex './gateway\.[0-9]+' -delete
-	find . -type f -maxdepth 1 -regex './redis\.[0-9]+' -delete
-	find . -type f -maxdepth 1 -regex './OAR\.[0-9]+\.std*' -delete
+	find . -type f -regex './workers\.[0-9]+' -delete
+	find . -type f -regex './gateway\.[0-9]+' -delete
+	find . -type f -regex './redis\.[0-9]+' -delete
+	find . -type f -regex './deploynodes\.[0-9]+' -delete
+	find . -type f -regex './OAR\.[0-9]+\.std*' -delete
 	;;
 help)
 	usage
