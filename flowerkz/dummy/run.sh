@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASE_DIR=$(realpath $(dirname $0))
-NIGHTCORE_ROOT=../../nightcore
+NIGHTCORE_ROOT=../nightcore
 BUILD_TYPE=release
 
 rm -rf $BASE_DIR/outputs

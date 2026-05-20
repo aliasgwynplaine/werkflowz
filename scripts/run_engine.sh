@@ -29,6 +29,8 @@ if [ -z "$COMMON_ENV_H" ]; then
     exit 2
 fi
 
+bash compil.sh
+
 test -d $BASE_DIR/outputs && rm -rf $BASE_DIR/outputs
 mkdir -p $BASE_DIR/outputs
 

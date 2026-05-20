@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"cs.utexas.edu/zjia/faas"
 	"cs.utexas.edu/zjia/faas/types"
@@ -71,7 +72,7 @@ func (h *incrementorInitHandler) Call(ctx context.Context, input []byte) ([]byte
 
 	fmt.Println("ips: ", ips)
 	fmt.Println("preparing payload...")
-	object := incrementorRep{num, 9999, ips[0].String() + ":12345"}
+	object := incrementorRep{num, 99, ips[0].String() + ":12345"}
 
 	fmt.Println(object)
 
@@ -103,13 +104,14 @@ func (h *incrementorInitHandler) Call(ctx context.Context, input []byte) ([]byte
 	}
 
 	buf := make([]byte, 1024)
+	err = c.SetReadDeadline(time.Time{})
 	n, err := c.Read(buf)
-
-	fmt.Println("Recv: ", buf[:n], " -> ", string(buf[:n]))
 
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println("Recv: ", buf[:n], " -> ", string(buf[:n]))
 
 	return []byte(buf[:n]), nil
 }

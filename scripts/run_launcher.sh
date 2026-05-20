@@ -18,7 +18,6 @@ fi
 
 experiment=$1
 cd $HOME/$experiment
-bash compil.sh
 source common.env
 
 if [ -z "$COMMON_ENV_H" ]; then
