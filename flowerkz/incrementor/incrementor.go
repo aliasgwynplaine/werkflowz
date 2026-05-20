@@ -51,7 +51,7 @@ func (h *incrementorHandler) Call(ctx context.Context, input []byte) ([]byte, er
 
 	var nxt string
 
-	if data.Step == 1 {
+	if data.Step <= 1 {
 		// call finish
 		nxt = "http://" + os.Getenv("NIGHTCORE_GW_ADDR") + ":8080/function/incrementorFinish"
 	} else {

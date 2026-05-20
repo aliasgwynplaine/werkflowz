@@ -33,7 +33,7 @@ func (f *funcHandlerFactory) GrpcNew(env types.Environment, service string) (typ
 }
 
 func (h *incrementorHandler) Call(ctx context.Context, input []byte) ([]byte, error) {
-	fmt.Println("Incrementor...")
+	fmt.Println("IncrementorFinish...")
 	//decode json
 	data := incrementorRep{}
 

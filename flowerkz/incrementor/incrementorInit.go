@@ -103,8 +103,10 @@ func (h *incrementorInitHandler) Call(ctx context.Context, input []byte) ([]byte
 		panic(err)
 	}
 
+	fmt.Println("Connection accepted: ", c.RemoteAddr())
+
 	buf := make([]byte, 1024)
-	err = c.SetReadDeadline(time.Time{})
+	err = c.SetDeadline(time.Now().Add(1 * time.Minute))
 	n, err := c.Read(buf)
 
 	if err != nil {
