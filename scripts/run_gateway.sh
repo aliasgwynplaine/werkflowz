@@ -28,8 +28,12 @@ fi
 mkdir -p $BASE_DIR/outputs
 
 $NIGHTCORE_ROOT/bin/release/gateway \
-    --func_config_file=$BASE_DIR/func_config.json \
-    --v=1 2>$BASE_DIR/outputs/gateway.log &
+	--listen_addr=0.0.0.0 \
+	--lb_pick_least_load \
+	--num_io_workers=8 \
+	--max_running_requests=32 \
+	--func_config_file=$BASE_DIR/func_config.json \
+	--v=1 2> $BASE_DIR/outputs/gateway.log &
 
 echo "[$lhost]: gateway has been deployed for experiment $experiment"
 

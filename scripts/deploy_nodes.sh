@@ -70,16 +70,11 @@ while [[ $gtfo -lt $nb_nodes ]]; do
 		echo -n "Trying $vm... "
 
 		if nc -z $vm 22; then
-			ready[$vm]=1
+			gtfo=$(( gtfo + 1 ))
 			echo "ok!"
 		else
-			ready[$vm]=0
 			echo "error"
 		fi
-	done
-
-	for vm in $nb_nodes; do
-		gtfo=$(( gtfo + ${ready[$vm]} ))
 	done
 
 	if [[ $gtfo -lt $nb_nodes ]]; then
@@ -91,7 +86,7 @@ while [[ $gtfo -lt $nb_nodes ]]; do
 		continue
 	fi
 
-	echo "\nRetrying..."
+	echo -e "\nRetrying..."
 	#vms=$(oarstat -u -f -j ${OAR_JOBID} | grep assigned_hostnames | cut -d "=" -f 2)
 	#vms="${vms#[[:space:]]}"
 	#vms="${vms%[[:space:]]}"

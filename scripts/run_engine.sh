@@ -31,13 +31,16 @@ fi
 
 bash compil.sh
 
-test -d $BASE_DIR/outputs && rm -rf $BASE_DIR/outputs
+[ -d "$BASE_DIR/outputs" ] && rm -rf $BASE_DIR/outputs
 mkdir -p $BASE_DIR/outputs
 
 $NIGHTCORE_ROOT/bin/release/engine \
     --gateway_addr=$nightcore_gw_addr \
+    --num_io_workers=8 \
+    --gateway_conn_per_worker=32 \
+    --disable_monitor \
     --func_config_file=$BASE_DIR/func_config.json \
-    --node_id=$node_id \
     --v=1 2>$BASE_DIR/outputs/engine.log &
+    #--node_id=$node_id \
 
 echo "[$lhost]: engine has been deployed for experiment $experiment."

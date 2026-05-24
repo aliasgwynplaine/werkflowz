@@ -42,6 +42,6 @@ $NIGHTCORE_ROOT/bin/release/launcher \
     --func_id=$func_id --fprocess_mode=$fprocess_mode \
     --fprocess_output_dir=$BASE_DIR/outputs \
     --fprocess=$BASE_DIR/$fprocess \
-    --v=1 2>$BASE_DIR/outputs/launcher_$fprocess.log &
+    --v=1 2> $BASE_DIR/outputs/launcher_$fprocess.log &
 
 echo "[$lhost]: $fprocess_mode function $func_id - $fprocess  has been launched."

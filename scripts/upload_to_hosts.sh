@@ -18,6 +18,8 @@ if [ -d "$fichier" ]; then
 	opts="-r"
 fi
 
+opts="-o StrictHostKeyChecking=no $opts"
+
 for rhost in ${rhosts[@]}; do
 	if ! nc -z $rhost 22; then
 		echo "remote host $rhost not open in port 22"
@@ -25,3 +27,4 @@ for rhost in ${rhosts[@]}; do
 	fi
 	scp $opts $fichier root@$rhost:~/
 done
+

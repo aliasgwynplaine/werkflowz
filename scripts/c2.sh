@@ -11,10 +11,17 @@ usage () {
 	echo "	upload <file> <host>"
 	echo "	upload-to-hosts <file> <file.host>"
 	echo "	run-gateway <gateway.host> <experiment-name>"
-	echo "	run-engine <workers.host> <experiment-name>"
+	echo "	kill-gateway <gateway.host>"
+	echo "	run-engine <workers.host> <experiment-name> <gateway.host>"
+	echo "	kill-all-engines <workers.host>"
 	echo "	run-launcher <worker> <expriment-name> <func_id> <gateway.host>"
+	echo "	kill-all-launchers <workers.host>"
 	echo "	redis-setup <redis.host>"
-	echo "	hit <gateway.host> <func_name> <method> <data>"
+	echo "	ccmesh-redis-run <workers.host>"
+	echo "	ccmesh-server-build <workers.host>"
+	echo "	ccmesh-server-run <redis.host> <workers.host>"
+	echo "	hit <gateway.host> <func_name> <data>"
+	echo "	remote-kill <file.host> <procname>"
 	echo "	retrieve-results"
 	echo "	clean-all"
 	echo "	help"
@@ -35,6 +42,9 @@ verify-experiment() {
 
 	case "$EXPERIMENT" in
 		incrementor)
+			return 0
+			;;
+		incrementorNotRet)
 			return 0
 			;;
 		writernreader)
@@ -102,24 +112,50 @@ run-gateway)
 	verify-experiment $3
 	mapfile -t gw < $2
 	bash remote_exec.sh $gw run_gateway.sh $3
+	sleep 1
+	;;
+
+kill-gateway)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 2
+	fi
+
+	mapfile -t gw < $2
+	ssh root@$gw 'killall gateway'
 	;;
 
 run-engine)
-	if [ $# -ne 3 ]; then
+	if [ $# -ne 4 ]; then
 		usage
-		exit 2
+		exit 3
 	fi
 
 	mapfile -t wrkrs < $2
 	experiment=$3
 	node_id=0
-	mapfile -t gateway_addr < "gateway.${2#workers.}" 
+	mapfile -t gateway_addr < $4 
 
 	for wrkr in ${wrkrs[@]}; do
 		bash remote_exec.sh $wrkr run_engine.sh $experiment $node_id $gateway_addr
 		node_id=$((node_id + 1))
+		sleep 1
 	done
 
+	sleep 2
+	;;
+
+kill-all-engines)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 2
+	fi
+
+	mapfile -t wrkrs < $2
+
+	for wrkr in ${wrkrs[@]}; do
+		ssh root@$wrkr 'pgrep engine && killall engine; exit 0'
+	done
 	;;
 
 run-launcher)
@@ -130,15 +166,91 @@ run-launcher)
 
 	mapfile -t gateway_addr < $5 
 	bash remote_exec.sh $2 run_launcher.sh $3 $4 $gateway_addr
+	sleep 1
 	;;
 
-redis_setup.sh)
+kill-all-launchers)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 2
+	fi
+
+	mapfile -t wrkrs < $2
+
+	for wrkr in ${wrkrs[@]}; do
+		ssh root@$wrkr 'pgrep launcher && killall launcher; exit 0'
+	done
+	;;
+
+kill-all)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 2
+	fi
+
+	mapfile -t gw < gateway.$2
+	mapfile -t wrkrs < workers.$2
+
+	ssh root@$gw 'pgrep gateway && killall gateway; exit 0'
+
+	for wrkr in ${wrkrs[@]}; do
+		ssh root@$wrkr 'pgrep launcher && killall launcher; exit 0'
+		ssh root@$wrkr 'pgrep engine && killall engine; exit 0'
+	done
+	;;
+
+redis-setup)
 	if [ $# -ne 2 ]; then
 		usage
 		exit 1
 	fi
 
-	redis_setup.sh $2
+	mapfile -t redis_server < $2
+	bash remote_exec.sh $redis_server redis_setup.sh
+	sleep 1
+	;;
+
+ccmesh-redis-run)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 1
+	fi
+
+	mapfile -t redis_server < $2
+	bash remote_exec.sh $redis_server ccmesh_redis_build.sh
+	;;
+
+ccmesh-server-build)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 1
+	fi
+
+	mapfile -t workers < $2
+
+	for wrkr in $workers; do
+		bash remote_exec.sh $wrkr ccmesh_server_build.sh
+	done
+
+	echo "ccmesh servers deployed !"
+	;;
+
+ccmesh-server-run)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 1
+	fi
+
+	mapfile -t workers < $2
+	idx=0
+
+	for wrkr in $workers; do
+		bash remote_exec.sh $wrkr ccmesh_server_run.sh $idx
+		idx=$(( idx + 1 ))
+	done
+
+	echo "ccmesh servers deployed !"
+
 	;;
 
 hit)
@@ -147,7 +259,21 @@ hit)
 		exit 3
 	fi
 
-	echo "hit service: not implemented"
+	mapfile -t gateway_addr < $2
+	entry=$3
+	payload=$4
+	curl -X POST -d "$payload" http://$gateway_addr:8080/function/$entry
+	;;
+
+remote-kill)
+	if [ $# -lt 3 ]; then
+		usage
+		exit 2
+	fi
+
+	mapfile -t rhost < $2
+	ssh root@$rhost "killall $3"
+	sleep 1
 	;;
 
 clean-all)
@@ -156,7 +282,10 @@ clean-all)
 	find . -type f -regex './redis\.[0-9]+' -delete
 	find . -type f -regex './deploynodes\.[0-9]+' -delete
 	find . -type f -regex './OAR\.[0-9]+\.std*' -delete
+
+	echo "All clean"
 	;;
+
 help)
 	usage
 	exit 0
@@ -168,5 +297,6 @@ help)
 	usage
 	exit 127
 	;;
+
 esac
 
