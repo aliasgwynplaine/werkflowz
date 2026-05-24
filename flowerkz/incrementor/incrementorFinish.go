@@ -17,7 +17,7 @@ type incrementorRep struct {
 	Origin string `json:"origin"`
 }
 
-type incrementorHandler struct {
+type incrementorFinishHandler struct {
 	env types.Environment
 }
 
@@ -25,14 +25,14 @@ type funcHandlerFactory struct {
 }
 
 func (f *funcHandlerFactory) New(env types.Environment, funcName string) (types.FuncHandler, error) {
-	return &incrementorHandler{env: env}, nil
+	return &incrementorFinishHandler{env: env}, nil
 }
 
 func (f *funcHandlerFactory) GrpcNew(env types.Environment, service string) (types.GrpcFuncHandler, error) {
 	return nil, fmt.Errorf("Not implemented. Fuck you")
 }
 
-func (h *incrementorHandler) Call(ctx context.Context, input []byte) ([]byte, error) {
+func (h *incrementorFinishHandler) Call(ctx context.Context, input []byte) ([]byte, error) {
 	fmt.Println("IncrementorFinish...")
 	//decode json
 	data := incrementorRep{}
@@ -52,9 +52,10 @@ func (h *incrementorHandler) Call(ctx context.Context, input []byte) ([]byte, er
 
 	conn.Write([]byte(strconv.Itoa(data.Number)))
 
-	return nil, nil
+	return []byte("Ok"), nil
 }
 
 func main() {
+	fmt.Println("serving...?")
 	faas.Serve(&funcHandlerFactory{})
 }

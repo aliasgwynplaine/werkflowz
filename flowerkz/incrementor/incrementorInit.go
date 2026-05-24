@@ -70,9 +70,21 @@ func (h *incrementorInitHandler) Call(ctx context.Context, input []byte) ([]byte
 		panic(err)
 	}
 
+
+	invokeurl := "http://" + os.Getenv("NIGHTCORE_GW_ADDR") + ":8080/function/incrementor"
+	fmt.Println("Seding request. GW: ", os.Getenv("NIGHTCORE_GW_ADDR"))
+
+	fmt.Println("Openning connection...")
+	listener, err := net.Listen("tcp", "0.0.0.0:0") // todo: randomize port
+
+	if err != nil {
+		panic(err)
+	}
+
 	fmt.Println("ips: ", ips)
 	fmt.Println("preparing payload...")
-	object := incrementorRep{num, 99, ips[0].String() + ":12345"}
+	addr := ips[0].String() +":"+ strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
+	object := incrementorRep{num, 32, addr}
 
 	fmt.Println(object)
 
@@ -86,22 +98,28 @@ func (h *incrementorInitHandler) Call(ctx context.Context, input []byte) ([]byte
 
 	payload := bytes.NewBuffer(data)
 
-	invokeurl := "http://" + os.Getenv("NIGHTCORE_GW_ADDR") + ":8080/function/incrementor"
-	go http.Post(invokeurl, "application/json", payload) // todo: check if this is the "good" way to do it
+	fmt.Println("invoking the incrementor...")
 
-	listener, err := net.Listen("tcp", "0.0.0.0:12345") // todo: randomize port
 
-	if err != nil {
-		panic(err)
-	}
+		_, err = http.Post(invokeurl, "application/json", payload) // todo: check if this is the "good" way to do it
+
+		if err != nil {
+			fmt.Println("error in post")
+			panic(err)
+		}
+
+	fmt.Println("invokation is done. Waiting response")
 
 	defer listener.Close()
-
+	
 	c, err := listener.Accept()
 
 	if err != nil {
+		fmt.Println("error...")
 		panic(err)
 	}
+
+	defer c.Close()
 
 	fmt.Println("Connection accepted: ", c.RemoteAddr())
 

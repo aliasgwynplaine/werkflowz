@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"cs.utexas.edu/zjia/faas"
 	"cs.utexas.edu/zjia/faas/types"
@@ -53,10 +54,10 @@ func (h *incrementorHandler) Call(ctx context.Context, input []byte) ([]byte, er
 
 	if data.Step <= 1 {
 		// call finish
+		fmt.Println("This is the last one!")
 		nxt = "http://" + os.Getenv("NIGHTCORE_GW_ADDR") + ":8080/function/incrementorFinish"
 	} else {
 		data.Step = data.Step - 1
-
 		nxt = "http://" + os.Getenv("NIGHTCORE_GW_ADDR") + ":8080/function/incrementor"
 	}
 
@@ -70,9 +71,21 @@ func (h *incrementorHandler) Call(ctx context.Context, input []byte) ([]byte, er
 
 	payload := bytes.NewBuffer(resp)
 
+	fmt.Println("Sending req to the next one: ", nxt)
+	
 	go http.Post(nxt, "application/json", payload)
 
-	return nil, nil
+	time.Sleep(3 * time.Second)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+	
+	//time.Sleep(3 * time.Second)
+
+	fmt.Println("Going out!")
+
+	return []byte("OK"), nil
 }
 
 func main() {

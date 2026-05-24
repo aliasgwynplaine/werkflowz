@@ -3,18 +3,18 @@
     "funcName": "incrementorInit",
     "funcId": 1,
     "minWorkers": 2,
-    "maxWorkers": 4
+    "maxWorkers": 10
   },
   {
     "funcName": "incrementor", 
     "funcId": 2,
     "minWorkers": 2,
-    "maxWorkers": 1000
+    "maxWorkers": 200
   },
   {
     "funcName": "incrementorFinish",
     "funcId": 3,
-    "minWorkers": 2,
-    "maxWorkers": 4
+    "minWorkers": 1,
+    "maxWorkers": 10
   }
 ]
