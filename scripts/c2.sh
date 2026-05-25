@@ -19,7 +19,7 @@ usage () {
 	echo "	redis-setup <redis.host>"
 	echo "	ccmesh-redis-run <redis.host>"
 	echo "	ccmesh-server-build <workers.host>"
-	echo "	ccmesh-server-run <redis.host> <workers.host>"
+	echo "	ccmesh-server-run <workers.host>"
 	echo "	hit <gateway.host> <func_name> <data>"
 	echo "	remote-kill <file.host> <procname>"
 	echo "	retrieve-results"
@@ -232,7 +232,7 @@ ccmesh-server-build)
 		bash remote_exec.sh $wrkr ccmesh_server_build.sh
 	done
 
-	echo "ccmesh servers deployed !"
+	sleep 10
 	;;
 
 ccmesh-server-run)
@@ -244,12 +244,14 @@ ccmesh-server-run)
 	mapfile -t workers < $2
 	idx=0
 
-	for wrkr in $workers; do
+	for wrkr in ${workers[@]}; do
 		bash remote_exec.sh $wrkr ccmesh_server_run.sh $idx
 		idx=$(( idx + 1 ))
 	done
 
-	echo "ccmesh servers deployed !"
+
+	echo "orders were sent"
+	sleep 10
 
 	;;
 

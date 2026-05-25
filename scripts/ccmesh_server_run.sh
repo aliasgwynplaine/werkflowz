@@ -8,6 +8,6 @@ fi
 
 lhost=$(hostname)
 cd ~/ccmesh-server
-cargo run --release --bin hz-server $1 2>&1 > ccmesh.log
+cargo run --release --bin hz-server $1 2> $HOME/ccmesh_server.log
 echo "[$lhost]: Done!"
 
