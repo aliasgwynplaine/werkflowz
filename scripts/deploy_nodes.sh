@@ -93,5 +93,18 @@ while [[ $gtfo -lt $nb_nodes ]]; do
 	#read -r -a vms <<< "$(echo $vms | sed s/\+/\ /g)"
 done
 
+echo "crafting common.py pkg/constants.go and config/cloud.json..."
+echo "" > common.py
+echo -n "MSSERVERS = [" > common.py
+echo -n "'${vms}'" >> common.py
+
+for vm in ${vms[@]:1}; do
+	echo -n ", '$vm'" >> common.py
+done
+
+echo "]" >> common.py
+
+python3 generate_cloud_and_constants.py
+
 echo "nodes are ready!"
 # todo

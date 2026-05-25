@@ -17,7 +17,7 @@ usage () {
 	echo "	run-launcher <worker> <expriment-name> <func_id> <gateway.host>"
 	echo "	kill-all-launchers <workers.host>"
 	echo "	redis-setup <redis.host>"
-	echo "	ccmesh-redis-run <workers.host>"
+	echo "	ccmesh-redis-run <redis.host>"
 	echo "	ccmesh-server-build <workers.host>"
 	echo "	ccmesh-server-run <redis.host> <workers.host>"
 	echo "	hit <gateway.host> <func_name> <data>"
