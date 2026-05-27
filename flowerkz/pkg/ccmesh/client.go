@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	. "werkflowz/pkg/common"
+	. "ccmeshclient/pkg/common"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -111,6 +111,15 @@ func InitClient() {
 	if RPCC == nil {
 		RPCC = CreateClient()
 	}
+}
+
+func NewMeshGoClient() *MeshGoClient {
+	var client MeshGoClient
+	InitClient()
+	client.Rpcc = RPCC
+
+	return &client
+
 }
 
 func Run(input []byte) []byte {
