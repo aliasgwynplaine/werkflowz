@@ -3,18 +3,18 @@
     "funcName": "init",
     "funcId": 1,
     "minWorkers": 2,
-    "maxWorkers": 10
+    "maxWorkers": 4
   },
   {
     "funcName": "writer", 
     "funcId": 2,
     "minWorkers": 2,
-    "maxWorkers": 200
+    "maxWorkers": 4
   },
   {
     "funcName": "reader",
     "funcId": 3,
-    "minWorkers": 1,
-    "maxWorkers": 10
+    "minWorkers": 2,
+    "maxWorkers": 4
   }
 ]

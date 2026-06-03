@@ -12,7 +12,7 @@ usage () {
 	echo "	upload-to-hosts <file> <file.host>"
 	echo "	run-gateway <gateway.host> <experiment-name>"
 	echo "	kill-gateway <gateway.host>"
-	echo "	run-engine <workers.host> <experiment-name> <gateway.host>"
+	echo "	run-engines <workers.host> <experiment-name> <gateway.host>"
 	echo "	kill-all-engines <workers.host>"
 	echo "	run-launcher <worker> <expriment-name> <func_id> <gateway.host>"
 	echo "	kill-all-launchers <workers.host>"
@@ -22,7 +22,7 @@ usage () {
 	echo "	ccmesh-server-run <workers.host>"
 	echo "	hit <gateway.host> <func_name> <data>"
 	echo "	remote-kill <file.host> <procname>"
-	echo "	retrieve-results"
+	echo "	retrieve-logs <deploynodes.host> <experiment>"
 	echo "	clean-all"
 	echo "	help"
 	echo
@@ -47,7 +47,7 @@ verify-experiment() {
 		incrementorNotRet)
 			return 0
 			;;
-		writernreader)
+		writerandreader)
 			return 0
 			;;
 		2branch)
@@ -125,7 +125,7 @@ kill-gateway)
 	ssh root@$gw 'killall gateway'
 	;;
 
-run-engine)
+run-engines)
 	if [ $# -ne 4 ]; then
 		usage
 		exit 3
@@ -227,12 +227,13 @@ ccmesh-server-build)
 	fi
 
 	mapfile -t workers < $2
+	echo "Building ${workers[@]}"
 
-	for wrkr in $workers; do
+	for wrkr in ${workers[@]}; do
 		bash remote_exec.sh $wrkr ccmesh_server_build.sh
 	done
 
-	sleep 10
+	sleep 20
 	;;
 
 ccmesh-server-run)
@@ -251,7 +252,7 @@ ccmesh-server-run)
 
 
 	echo "orders were sent"
-	sleep 10
+	sleep 20
 
 	;;
 
@@ -274,8 +275,44 @@ remote-kill)
 	fi
 
 	mapfile -t rhost < $2
-	ssh root@$rhost "killall $3"
+
+	for rh in ${rhost[@]}; do
+		ssh root@$rh "pgrep $3 && killall $3; exit 0"
+	done
+	
 	sleep 1
+	;;
+
+retrieve-logs)
+	if [ $# -ne 3 ]; then
+		usage
+		exit 3
+	fi
+
+	mapfile -t deploynodes < $2
+	redishost=${deploynodes[0]}
+	gatewayhost=${deploynodes[1]}
+	workerhosts=${deploynodes[@]:2}
+	experiment=$3
+
+	[ -d "logs" ] && rm -rf logs
+	mkdir logs
+
+	scp root@$redishost:~/redis.log logs/redis.log
+
+	scp root@$gatewayhost:~/flowerkz/$experiment/outputs/* logs/
+
+	cmd="ls ~/flowerkz/$experiment/outputs/"
+
+	for wrkr in $workerhosts; do
+		ssh root@$wrkr $cmd |
+			while read -r rfile; do
+				scp -r root@$wrkr:~/flowerkz/$experiment/outputs/$rfile logs/"${wrkr}_${rfile}"
+			done
+		scp root@$wrkr:~/ccmesh_server.log logs/${wrkr}_ccmesh_server.log
+	done
+
+	echo "Done ! Logs are in the logs folder :P"
 	;;
 
 clean-all)

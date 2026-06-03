@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"encoding/json"
 	"math/rand"
 	"net/http"
 	"os"
@@ -46,20 +47,33 @@ func (h *writerHandler) Call(ctx context.Context, input []byte) ([]byte, error) 
 	rand.Seed(time.Now().UnixNano())
 	randNum := rand.Intn(10)
 
+	data := infoRep{}
+
+	err := json.Unmarshal(input, &data)
+
+	check(err)
+
 	fmt.Println("context: ", ctx)
-	fmt.Println("updating var -> ", randNum)
+	fmt.Println("data: ", data)
+	fmt.Println("writing var 001 -> ", randNum)
 
 	cclient := ccmesh.NewMeshGoClient()
-	cclient.Write("k", strconv.Itoa(randNum))
+	if cclient.Rpcc == nil {
+		fmt.Println("Rpcc is null in the function")
+	}
+	cclient.Write("001", strconv.Itoa(randNum))
+
+	fmt.Println("write op was made...")
 
 	nxt := "http://" + os.Getenv("NIGHTCORE_GW_ADDR") + ":8080/function/reader"
 
 	payload := bytes.NewBuffer(input)
 
-	fmt.Println("Sending req to the next one: ", nxt)
+	fmt.Println("Sending req to the reader: ", nxt)
 
 	go http.Post(nxt, "*/*", payload)
 
+	fmt.Println("request sent. Sleeping...")
 	time.Sleep(87 * time.Second)
 
 	fmt.Println("Going out!")

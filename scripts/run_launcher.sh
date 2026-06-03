@@ -11,13 +11,13 @@ fi
 
 lhost=$(hostname)
 
-if [ ! -d "$HOME/$1" ]; then
+if [ ! -d "$HOME/flowerkz/$1" ]; then
 	echo "[$lhost]: Experiment not loaded"
 	exit 42
 fi
 
 experiment=$1
-cd $HOME/$experiment
+cd $HOME/flowerkz/$experiment
 source common.env
 
 if [ -z "$COMMON_ENV_H" ]; then

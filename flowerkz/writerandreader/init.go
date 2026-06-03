@@ -82,6 +82,8 @@ func (h *initHandler) Call(ctx context.Context, input []byte) ([]byte, error) {
 		panic(err)
 	}
 
+	defer listener.Close()
+
 	fmt.Println("ips: ", ips)
 	fmt.Println("preparing payload...")
 	addr := ips[0].String() + ":" + strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
@@ -98,16 +100,9 @@ func (h *initHandler) Call(ctx context.Context, input []byte) ([]byte, error) {
 
 	fmt.Println("invoking the init...")
 
-	_, err = http.Post(invokeurl, "*/*", payload) // todo: check if this is the "good" way to do it
-
-	if err != nil {
-		fmt.Println("error in post")
-		panic(err)
-	}
+	go http.Post(invokeurl, "*/*", payload) // todo: check if this is the "good" way to do it
 
 	fmt.Println("invokation is done. Waiting response")
-
-	defer listener.Close()
 
 	c, err := listener.Accept()
 

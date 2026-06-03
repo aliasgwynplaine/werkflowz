@@ -22,5 +22,5 @@ if [ -d "$fichier" ]; then
 	opts="$opts -r"
 fi
 
-scp $opts $fichier root@$rhost:~/
+rsync $opts $fichier root@$rhost:~/
 

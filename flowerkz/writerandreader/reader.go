@@ -50,7 +50,8 @@ func (h *readerHandler) Call(ctx context.Context, input []byte) ([]byte, error) 
 	fmt.Println("data: ", data)
 
 	cclient := ccmesh.NewMeshGoClient()
-	v := cclient.Read("k")
+
+	v := cclient.Read("001")
 
 	fmt.Println("just read: ", v)
 

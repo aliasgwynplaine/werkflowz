@@ -29,9 +29,9 @@ pub fn rpc_client() -> MeshClient<tonic::transport::Channel> {
     CLIENT.get().unwrap().clone()
 }
 
-type Black = HashMap<String, Vec<M>>;
-type White = HashMap<String, M>;
-type White2 = HashMap<String, AllocRingBuffer<M>>;
+type Black = HashMap<String, Vec<M>>; // I-Cache
+type White = HashMap<String, M>;      // C-Cache
+type White2 = HashMap<String, AllocRingBuffer<M>>; // C-cache for TCC
 pub static CHEKC_BLK: bool = false;
 // type RPCClient = MeshClient<tonic::transport::Channel>;
 
@@ -139,26 +139,26 @@ impl CCMeshService {
     }
 
     pub fn print_cache(&self) {
-        // let white = self.white.lock().unwrap();
-        // let black = self.black.lock().unwrap();
-        // let white_l: Vec<u8> = bincode::serialize(&white.clone()).unwrap();
-        // let black_l: Vec<u8> = bincode::serialize(&black.clone()).unwrap();
-        // info!("white:   {}", white_l.len());
-        // info!("black:   {}", black_l.len());
-        // info!(
-        //     "white:   {:?}",
-        //     white
-        //         .iter()
-        //         .filter(|(_, m)| m.vc != VC::default())
-        //         .collect::<Vec<_>>()
-        // );
-        // info!(
-        //     "black:   {:?}",
-        //     black
-        //         .iter()
-        //         .filter(|(_, ms)| ms.len() > 1)
-        //         .collect::<Vec<_>>()
-        // );
+        let white = self.white.lock().unwrap();
+        let black = self.black.lock().unwrap();
+        let white_l: Vec<u8> = bincode::serialize(&white.clone()).unwrap();
+        let black_l: Vec<u8> = bincode::serialize(&black.clone()).unwrap();
+        info!("white.len():   {}", white_l.len());
+        info!("black.len():   {}", black_l.len());
+        info!(
+            "white:   {:?}",
+            white
+                .iter()
+                .filter(|(_, m)| m.vc != VC::default())
+                .collect::<Vec<_>>()
+        );
+        info!(
+            "black:   {:?}",
+            black
+                .iter()
+                .filter(|(_, ms)| ms.len() > 1)
+                .collect::<Vec<_>>()
+        );
     }
 
     pub fn get_deps(
@@ -366,10 +366,14 @@ impl Mesh for CCMeshService {
         let k = req.key;
         // let deps: HashMap<String, VC> = serde_json::from_slice(&req.deps).unwrap();
         let deps: HashMap<String, VC> = serde_json::from_str(&req.deps).unwrap();
+        info!("client_read {} (before):", k);
+        self.print_cache();
         let res = self.pull_deps2(&deps, k, None);
         // let res = self.white.lock().unwrap().get(&k).unwrap().clone();
         // assert!(res.deps.is_empty());
+        info!("client_read {} (after):", k);
         self.print_cache();
+
         if res.is_none() {
             return Ok(Response::new(ClientReadResponse {
                 value: "None".to_string(),
@@ -377,6 +381,7 @@ impl Mesh for CCMeshService {
             }));
         }
         let res = res.unwrap();
+
         Ok(Response::new(ClientReadResponse {
             value: res.value,
             vc: serde_json::to_string(&res.vc).unwrap(),
@@ -436,16 +441,12 @@ impl Mesh for CCMeshService {
         // let deps: HashMap<String, VC> = serde_json::from_slice(&req.deps).unwrap();
         let mut deps: HashMap<String, VC> = serde_json::from_str(&req.deps).unwrap();
         let local: HashMap<K, M> = serde_json::from_str(&req.local).unwrap();
+
+        info!("client_write {} before:", key);
+        self.print_cache();
+
         for (k, m) in local.iter() {
             deps.insert_or_merge(k.clone(), m.vc.clone());
-            // match self.black.lock().unwrap().entry(k) {
-            //     Entry::Occupied(mut e) => {
-            //         e.get_mut().push(m);
-            //     }
-            //     Entry::Vacant(e) => {
-            //         e.insert(vec![m]);
-            //     }
-            // }
         }
         let m: M = M {
             key: key.clone(),
@@ -453,8 +454,6 @@ impl Mesh for CCMeshService {
             vc: res.clone(),
             deps,
         };
-        // let start = std::time::Instant::now();
-        // let m_cp = m.clone();
         {
             // let mut blk = self.black.lock().unwrap();
             // for (k, m) in local.into_iter() {
@@ -502,7 +501,6 @@ impl Mesh for CCMeshService {
             //     }
             // }
         }
-        // println!("black: {}", start.elapsed().as_micros());
         // write to redis
         if DURABLE {
             self.redis.send(m.no_deps()).await.unwrap();
@@ -514,6 +512,9 @@ impl Mesh for CCMeshService {
         // conn.write_frame_and_flush(&m.no_deps()).await.unwrap();
         // send to neighbor
         // let start = std::time::Instant::now();
+        info!("client_write after:");
+        self.print_cache();
+
         let next_req = ServerWriteRequest {
             key,
             value: m.value,
@@ -538,6 +539,8 @@ impl Mesh for CCMeshService {
         &self,
         request: Request<ServerWriteRequest>,
     ) -> Result<Response<()>, Status> {
+        info!("server_write before:");
+        self.print_cache();
         let mut req: ServerWriteRequest = request.into_inner();
 
         if req.headid != ((self.id + 1) % T) as u32 && req.round == 1 {
@@ -585,6 +588,8 @@ impl Mesh for CCMeshService {
             vc.merge_into(&req_vc);
             res_vc = vc.clone();
         }
+
+        info!("pulling deps...");
         self.pull_deps2(
             &req_deps,
             req.key.clone(),
@@ -595,6 +600,8 @@ impl Mesh for CCMeshService {
                 deps: HashMap::default(),
             }),
         );
+
+        info!("server_write after:");
         self.print_cache();
         Ok(Response::new(()))
     }

@@ -25,6 +25,8 @@ for rhost in ${rhosts[@]}; do
 		echo "remote host $rhost not open in port 22"
 		exit 2
 	fi
+	echo "[*] coping files to $rhost"
 	scp $opts $fichier root@$rhost:~/
+	echo "[*] $rhost done!"
 done
 
