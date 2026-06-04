@@ -25,6 +25,8 @@ type MeshGoClient struct {
 
 func (client *MeshGoClient) Read(k string) string {
 	//start := time.Now()
+	fmt.Printf("read: %s ----\n", k)
+
 	if m, ok := client.Local[k]; ok {
 		return m.Value
 	}
@@ -32,8 +34,8 @@ func (client *MeshGoClient) Read(k string) string {
 	fmt.Println("deps:", depsStr)
 	CHECK(err)
 	res, err := (*client.Rpcc).ClientRead(context.Background(), &ClientReadRequest{Key: k, Deps: string(depsStr)})
-	fmt.Println(res)
 	CHECK(err)
+	fmt.Println("res:", res)
 	var vc VC
 	err = json.Unmarshal([]byte(res.Vc), &vc)
 	CHECK(err)
@@ -41,6 +43,7 @@ func (client *MeshGoClient) Read(k string) string {
 		InsertOrMergeVC(&client.Deps, k, &vc)
 	}
 	//fmt.Println("read", k, ": ", vc, " time:", time.Since(start))
+	fmt.Printf("end_read: %s ----\n", k)
 	return res.Value
 }
 
@@ -50,7 +53,9 @@ func (client *MeshGoClient) Write(k string, v string) {
 	CHECK(err)
 	localStr, err := json.Marshal(client.Local)
 	CHECK(err)
+	fmt.Println("Deps", client.Deps)
 	fmt.Println("deps", depsStr)
+	fmt.Println("Local", client.Local)
 	fmt.Println("local", localStr)
 	res, err := (*client.Rpcc).ClientWrite(context.Background(), &ClientWriteRequest{Key: k, Value: v, Deps: string(depsStr), Local: string(localStr)})
 	CHECK(err)
@@ -116,10 +121,23 @@ func InitClient() {
 func NewMeshGoClient() *MeshGoClient {
 	var client MeshGoClient
 	InitClient()
-	client.Rpcc = RPCC
+
+	if client.Rpcc == nil {
+		fmt.Println("newmeshgoclient: new rpcc")
+		client.Rpcc = RPCC
+	} else {
+		fmt.Println("newmeshgoclient: uu")
+	}
+
+	client.Workload = make([]map[string]interface{}, 0)
+	client.Local = make(map[string]*Meta, 0)
+	client.Deps = make(map[string]VC, 0)
+
+	if client.Rpcc == nil {
+		fmt.Println("UUUUUUU")
+	}
 
 	return &client
-
 }
 
 func Run(input []byte) []byte {
