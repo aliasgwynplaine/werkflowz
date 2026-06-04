@@ -41,4 +41,5 @@ $NIGHTCORE_ROOT/bin/$BUILD_TYPE/launcher \
     --fprocess=$BASE_DIR/reader \
     --v=1 2>$BASE_DIR/outputs/launcher_reader.log &
 
+echo "Ready!"
 wait

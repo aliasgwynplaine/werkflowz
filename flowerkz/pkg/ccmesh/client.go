@@ -21,6 +21,7 @@ type MeshGoClient struct {
 	Deps     map[string]VC            `json:"deps"`
 	Input    string                   `json:"input"`
 	Abort    bool                     `json:"abort"`
+	Origin   string                   `json:"origin"`
 }
 
 func (client *MeshGoClient) Read(k string) string {

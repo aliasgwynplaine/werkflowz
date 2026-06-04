@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"os"
@@ -67,7 +67,11 @@ func (h *writerHandler) Call(ctx context.Context, input []byte) ([]byte, error) 
 
 	nxt := "http://" + os.Getenv("NIGHTCORE_GW_ADDR") + ":8080/function/reader"
 
-	payload := bytes.NewBuffer(input)
+	cclient.Rpcc = nil
+	clientStr, err := json.Marshal(cclient)
+	fmt.Println("clientStr: ", clientStr)
+
+	payload := bytes.NewBuffer(clientStr)
 
 	fmt.Println("Sending req to the reader: ", nxt)
 

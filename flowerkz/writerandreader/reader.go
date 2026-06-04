@@ -41,21 +41,19 @@ func (h *readerHandler) Call(ctx context.Context, input []byte) ([]byte, error) 
 	fmt.Println("reader...")
 	fmt.Println("context: ", ctx)
 
-	data := infoRep{}
+	cclient := ccmesh.NewMeshGoClient()
 
-	err := json.Unmarshal(input, &data)
+	err := json.Unmarshal(input, &cclient)
 
 	check(err)
 
-	fmt.Println("data: ", data)
-
-	cclient := ccmesh.NewMeshGoClient()
+	fmt.Println("cclient: ", cclient)
 
 	v := cclient.Read("001")
 
 	fmt.Println("just read: ", v)
 
-	conn, err := net.Dial("tcp", data.Origin)
+	conn, err := net.Dial("tcp", cclient.Origin)
 
 	check(err)
 
