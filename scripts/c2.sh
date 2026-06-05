@@ -122,7 +122,7 @@ kill-gateway)
 	fi
 
 	mapfile -t gw < $2
-	ssh root@$gw 'killall gateway'
+	ssh root@$gw 'pgrep gateway && killall gateway; exit 0'
 	;;
 
 run-engines)

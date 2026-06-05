@@ -40,6 +40,7 @@ func (f *funcHandlerFactory) GrpcNew(env types.Environment, service string) (typ
 func (h *readerHandler) Call(ctx context.Context, input []byte) ([]byte, error) {
 	fmt.Println("reader...")
 	fmt.Println("context: ", ctx)
+	fmt.Println("input: ", input)
 
 	cclient := ccmesh.NewMeshGoClient()
 

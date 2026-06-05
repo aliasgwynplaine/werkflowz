@@ -371,7 +371,7 @@ impl Mesh for CCMeshService {
         let res = self.pull_deps2(&deps, k, None);
         // let res = self.white.lock().unwrap().get(&k).unwrap().clone();
         // assert!(res.deps.is_empty());
-        info!("client_read {} (after):", k);
+        info!("client_read (before):");
         self.print_cache();
 
         if res.is_none() {
