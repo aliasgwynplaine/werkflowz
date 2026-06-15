@@ -1,0 +1,10 @@
+{
+    "NB_NODES": 5,
+    "fprocess_mode": "go",
+    "fuxmap": [
+	    "init",
+	    "ping",
+	    "pong",
+        "finish"
+    ]
+}
