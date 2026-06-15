@@ -2,12 +2,8 @@
 Some workflows (in go) to test [nightcore](https://github.com/ut-osa/nightcore)
 
 ## to-do
-+ [x] `compil.sh` for every workflow
-+ [x] `README.md` for every workflow
-+ [ ] mira los matices de utilisar goroutines
-+ [x] test in distributed
 + [ ] ccmesh-server
-+ [ ] c2 - verify requirements
++ [ ] change the sync for async
 
 ## requirements
 ### workers

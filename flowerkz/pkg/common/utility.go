@@ -20,7 +20,7 @@ func CHECK(err error) {
 	}
 }
 
-func getLocalIPv4() ([]net.IP, error) {
+func GetLocalIPv4() ([]net.IP, error) {
 	var ips []net.IP
 	interfc, err := net.InterfaceAddrs()
 
