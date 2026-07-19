@@ -1,50 +1,117 @@
-use std::collections::HashMap;
-use std::sync::{RwLock, Arc};
-use std::io::Result;
+use dashmap::DashMap;
+use dashmap::Entry::{Occupied, Vacant};
+use std::env;
+use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::watch;
 
-type Tid = u32;
-type Fid = String; // not so sure about this
-type Addr = String;
-type FunctionMap = RwLock<HashMap<Fid, Addr>>; // fid -> "addr:port"
-type TransactionMap = Arc<RwLock<HashMap<Tid, Arc<FunctionMap>>>>;
+type Addr = Arc<str>;
+type Fid = String;
+type Tid = String;
 
-static GATEWAY_ADDR : &str = "localhost:8000";
+type FunctionMap = DashMap<Fid, watch::Sender<Option<Addr>>>;
+type TransactionMap = DashMap<Tid, Arc<FunctionMap>>;
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    println!("Hello, friend!");
-    let txn : TransactionMap = Arc::new(RwLock::new(HashMap::new()));
+struct Snitch {
+    tmap: TransactionMap,
+    default_addr: Addr,
+}
 
-    let listener = TcpListener::bind("0.0.0.0:46655").await?;
-    println!("Listening in port 46655");
+impl Snitch {
+    fn new(default_address: impl Into<Addr>) -> Self {
+        Snitch {
+            tmap: DashMap::new(),
+            default_addr: default_address.into(),
+        }
+    }
+}
+
+async fn resolve(snitch: &Snitch, tid: &str, fid: &str) -> Addr {
+    let fuxmap = match snitch.tmap.entry(tid.to_owned()) {
+        Occupied(entry) => entry.get().clone(),
+        Vacant(entry) => {
+            entry.insert(Arc::new(FunctionMap::new()));
+            return snitch.default_addr.clone();
+        }
+    };
+
+    let mut rx = match fuxmap.entry(fid.to_owned()) {
+        Occupied(entry) => entry.get().subscribe(),
+        Vacant(entry) => {
+            let (sx, rx) = watch::channel(None);
+            entry.insert(sx);
+            rx
+        }
+    };
 
     loop {
-        let (socket, addr) = listener.accept().await?;
-        let map = Arc::clone(&txn);
+        if let Some(addr) = rx.borrow().clone() {
+            return addr;
+        }
 
-        println!("Connection accepted from {addr}");
-
-        tokio::spawn(
-            async move {
-                if let Err(e) = handle_connection(socket, map).await {
-                    eprintln!("error with {addr}: {e}");
-                }
-            }
-        );
+        if rx.changed().await.is_err() {
+            return snitch.default_addr.clone();
+        }
     }
 }
 
 
-async fn handle_connection(socket: TcpStream, map: TransactionMap) -> Result<()> {
+fn put(snitch: &Snitch, tid: &str, fid: &str, addr: Addr) {
+    let fuxmap = snitch.tmap.entry(tid.to_owned())
+        .or_insert_with(|| Arc::new(FunctionMap::new()))
+        .clone();
+
+    match fuxmap.entry(fid.to_owned()) {
+        Occupied(entry) => {
+            entry.get().send_replace(Some(addr));
+        }
+        Vacant(entry) => {
+            let (sx, _) = watch::channel(Some(addr));
+            entry.insert(sx);
+        }
+    };
+}
+
+
+
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
+    let bind_addr = "0.0.0.0:46655".to_string();
+    let default_address =
+        env::var("GATEWAY_ADDR").unwrap_or_else(|_| "localhost:8080".to_string());
+
+    let snitch = Arc::new(Snitch::new(default_address));
+
+    let listener = TcpListener::bind(&bind_addr).await?;
+    eprintln!("snitch listening: {bind_addr}");
+
+    loop {
+        let (socket, peer) = listener.accept().await?;
+        let snitch = Arc::clone(&snitch);
+        tokio::spawn(async move {
+            if let Err(e) = handle_connection(socket, &snitch).await {
+                eprintln!("connection {peer} ended with error: {e}");
+            }
+        });
+    }
+}
+
+
+async fn handle_connection(socket: TcpStream, snitch: &Arc<Snitch>) -> std::io::Result<()> {
     let (reader, mut writer) = socket.into_split();
     let mut lines = BufReader::new(reader).lines();
 
     while let Some(line) = lines.next_line().await? {
-        let response = process_line(&line, &map);
-        writer.write_all(response.await.as_bytes()).await?;
-        writer.write_all(b"\n").await?;
+        let line = line.trim();
+
+        if line.is_empty() {
+            continue;
+        }
+
+        let response = process_line(&snitch, line).await;
+        writer.write_all(response.as_bytes()).await?;
+        //writer.write_all(b"\n").await?;
     }
 
     println!("Closing connection.");
@@ -53,75 +120,27 @@ async fn handle_connection(socket: TcpStream, map: TransactionMap) -> Result<()>
 }
 
 
-async fn process_line(line: &str, map: &TransactionMap) -> String {
-    let parts : Vec<&str> = line.trim().split_whitespace().collect();
+async fn process_line(snitch: &Snitch, line: &str) -> String {
+    let parts: Vec<&str> = line.trim().split_whitespace().collect();
 
     match parts.as_slice() {
         ["GET", tid, fid] => {
-            let (tid, fid) = match(tid.parse::<Tid>(), fid.parse::<Fid>()) {
+            let (tid, fid) = match (tid.parse::<Tid>(), fid.parse::<Fid>()) {
                 (Ok(t), Ok(f)) => (t, f),
-                _ => return "fuck you".to_string(),
+                _ => return "Guck you".to_string(),
             };
-            format!("Ok {}", resolve(map, tid, fid))
+            let addr = resolve(snitch, &tid, &fid).await;
+            format!("{addr}")
         }
-
         ["PUT", tid, fid, addr] => {
-            let tid = match tid.parse::<Tid>() {
-                Ok(v) => v, Err(_) => return "tuck you".to_string()
+            let (tid, fid, addr) = match (tid.parse::<Tid>(), fid.parse::<Fid>(), addr.parse::<String>()) {
+                (Ok(t), Ok(f), Ok(a)) => (t, f, a),
+                _ => return format!("Fuck yOu"),
             };
-            let fid = match fid.parse::<Fid>() {
-                Ok(v) => v, Err(_) => return "fuck you".to_string()
-            };
-            let addr = match addr.parse::<String>() {
-                Ok(v) => v, Err(_) => return "suck you".to_string()
-            };
-
-            put(map, tid, fid, addr);
-
-            "Ok".to_string()
+            let addr = Arc::from(addr);
+            put(snitch, &tid, &fid, addr);
+            "OK".to_string()
         }
-
-        ["COMMIT", tid] => {
-            let tid = match tid.parse::<Tid>() {
-                Ok(v) => v, Err(_) => return "fuck you".to_string()
-            };
-
-            delete(map, tid);
-
-            "Ok".to_string()
-        }
-
-        _ => "FUCK YOU".to_string(),
+        _ => format!("fuck You"),
     }
-}
-
-fn resolve(map: &TransactionMap, tid: Tid, fid: Fid) -> Addr {
-    let transmap = map.read().unwrap();
-    match transmap.get(&tid) {
-        Some(trans_lock) => {
-            let fuxmap = trans_lock.read().unwrap();
-            fuxmap.get(&fid).unwrap_or(&GATEWAY_ADDR.to_string()).clone() // todo: change if needed
-        }
-        None => GATEWAY_ADDR.to_string() // do i need to create the trans map ? 
-    }
-}
-
-fn put(map: &TransactionMap, tid: Tid, fid: Fid, addr: Addr) {
-    {
-        let transmap = map.read().unwrap();
-        
-        if let Some(fux_lock) =transmap.get(&tid) {
-            fux_lock.write().unwrap().insert(fid, addr);
-            return;
-        }
-    }
-
-    let mut transmap = map.write().unwrap();
-    let fux_map = transmap.entry(tid).or_insert_with(|| Arc::new(RwLock::new(HashMap::new())));
-    fux_map.write().unwrap().insert(fid, addr);
-}
-
-fn delete(map: &TransactionMap, tid: Tid) {
-    let mut transmap = map.write().unwrap();
-    transmap.remove_entry(&tid).unwrap(); // todo: verify
 }
