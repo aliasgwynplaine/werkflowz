@@ -1,0 +1,10 @@
+{
+    "NB_NODES": 4,
+    "fprocess_mode": "go",
+    "fuxmap": [
+	    "fanout",
+	    "incrementor0",
+	    "incrementor1",
+        "fanin"
+    ]
+}
