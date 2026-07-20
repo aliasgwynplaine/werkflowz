@@ -29,24 +29,33 @@ impl Snitch {
 
 async fn resolve(snitch: &Snitch, tid: &str, fid: &str) -> Addr {
     let fuxmap = match snitch.tmap.entry(tid.to_owned()) {
-        Occupied(entry) => entry.get().clone(),
+        Occupied(entry) => {
+            println!("tid {tid} found !");
+            entry.get().clone()
+        },
         Vacant(entry) => {
+            println!("tid {tid} not found. Creating FuxMap and returning gw addr!");
             entry.insert(Arc::new(FunctionMap::new()));
             return snitch.default_addr.clone();
         }
     };
 
     let mut rx = match fuxmap.entry(fid.to_owned()) {
-        Occupied(entry) => entry.get().subscribe(),
+        Occupied(entry) => {
+            println!("fid {fid} channel found. Waiting for info...");
+            entry.get().subscribe()
+        },
         Vacant(entry) => {
-            let (sx, rx) = watch::channel(None);
+            println!("fid {fid} channel not found. Creating channel");
+            let (sx, _) = watch::channel(None);
             entry.insert(sx);
-            rx
+            return snitch.default_addr.clone();
         }
     };
 
     loop {
         if let Some(addr) = rx.borrow().clone() {
+            println!("nice!");
             return addr;
         }
 
@@ -64,15 +73,20 @@ fn put(snitch: &Snitch, tid: &str, fid: &str, addr: Addr) {
 
     match fuxmap.entry(fid.to_owned()) {
         Occupied(entry) => {
+            println!("Put: Entry channel found for {fid}!");
             entry.get().send_replace(Some(addr));
         }
         Vacant(entry) => {
+            println!("Put: No entry channel for {fid}");
             let (sx, _) = watch::channel(Some(addr));
             entry.insert(sx);
         }
     };
 }
 
+fn delete(snitch: &Snitch, tid: &str) {
+    snitch.tmap.remove(tid).unwrap();
+}
 
 
 #[tokio::main]
@@ -84,14 +98,15 @@ async fn main() -> std::io::Result<()> {
     let snitch = Arc::new(Snitch::new(default_address));
 
     let listener = TcpListener::bind(&bind_addr).await?;
-    eprintln!("snitch listening: {bind_addr}");
+    println!("snitch listening: {bind_addr}");
 
     loop {
         let (socket, peer) = listener.accept().await?;
+        println!("Connection accepted from {peer}.");
         let snitch = Arc::clone(&snitch);
         tokio::spawn(async move {
             if let Err(e) = handle_connection(socket, &snitch).await {
-                eprintln!("connection {peer} ended with error: {e}");
+                println!("connection {peer} ended with error: {e}");
             }
         });
     }
@@ -110,6 +125,7 @@ async fn handle_connection(socket: TcpStream, snitch: &Arc<Snitch>) -> std::io::
         }
 
         let response = process_line(&snitch, line).await;
+        println!("sending response -> {response}");
         writer.write_all(response.as_bytes()).await?;
         //writer.write_all(b"\n").await?;
     }
@@ -121,6 +137,7 @@ async fn handle_connection(socket: TcpStream, snitch: &Arc<Snitch>) -> std::io::
 
 
 async fn process_line(snitch: &Snitch, line: &str) -> String {
+    println!("Processing line: {line}");
     let parts: Vec<&str> = line.trim().split_whitespace().collect();
 
     match parts.as_slice() {
@@ -140,6 +157,10 @@ async fn process_line(snitch: &Snitch, line: &str) -> String {
             let addr = Arc::from(addr);
             put(snitch, &tid, &fid, addr);
             "OK".to_string()
+        }
+        ["COMMIT", tid] => {
+            delete(snitch, tid);
+            "Ok".to_string()
         }
         _ => format!("fuck You"),
     }
