@@ -5,6 +5,8 @@ use cc_mesh::{ClientReadRequest, ClientReadResponse};
 use cc_mesh::{ClientWriteRequest, ClientWriteResponse};
 use cc_mesh::{HealthCheckRequest, HealthCheckResponse};
 use cc_mesh::{IsVisibleRequest, IsVisibleResponse};
+use cc_mesh::{ClientCommitTxnRequest, ClientCommitTxnResponse};
+use cc_mesh::ServerCommitTxnRequest;
 use ringbuffer::{AllocRingBuffer, RingBuffer};
 use hz_causal::*;
 use hz_config::*;
@@ -18,6 +20,7 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc::{self, Sender};
 use tonic::{transport::Server, Request, Response, Status};
 use tracing::info;
+
 pub mod cc_mesh {
     #![allow(clippy::derive_partial_eq_without_eq)]
     tonic::include_proto!("ccmesh");
@@ -32,6 +35,8 @@ pub fn rpc_client() -> MeshClient<tonic::transport::Channel> {
 type Black = HashMap<String, Vec<M>>; // I-Cache
 type White = HashMap<String, M>;      // C-Cache
 type White2 = HashMap<String, AllocRingBuffer<M>>; // C-cache for TCC
+type Gray = HashMap<String, Vec<M>>; // ongoing
+
 pub static CHEKC_BLK: bool = false;
 // type RPCClient = MeshClient<tonic::transport::Channel>;
 
@@ -44,6 +49,7 @@ pub struct CCMeshService {
     pub black: Mutex<Black>,
     pub vc: Mutex<VC>,
     pub next: flume::Sender<ServerWriteRequest>,
+    pub nextcc: flume::Sender<ServerCommitTxnRequest>,
     pub redis: Sender<M>,
 }
 
@@ -96,6 +102,14 @@ impl CCMeshService {
                 // client.server_write(req).await.unwrap();
             }
         });
+
+        let (sendercc, mut receivercc) = flume::unbounded();
+        tokio::spawn(async move {
+            while let Ok(req) = receivercc.recv_async().await {
+                rpc_client().server_commit_txn(req).await.unwrap();
+            }
+        });
+
         let addr = format!("http://{}", PEERS[(id + 1) % T]);
         let channel = tonic::transport::Channel::from_shared(addr)
             .unwrap()
@@ -134,6 +148,7 @@ impl CCMeshService {
             black: Mutex::new(black),
             vc: Mutex::new(VC::default()),
             next: sender,
+            nextcc: sendercc,
             redis: redis_sender,
         }
     }
@@ -181,6 +196,12 @@ impl CCMeshService {
         }
     }
 
+    /**
+     * This function recursively collect all 
+     * the transitive predecessors of deps (inclusive) 
+     * from the black (I-cache) and then put them in
+     * the todo HashMap
+     */
     pub fn get_deps2(
         black: &mut MutexGuard<Black>,
         deps: &HashMap<String, VC>,
@@ -188,6 +209,12 @@ impl CCMeshService {
     ) {
         for (kk, vc) in deps.iter() {
             // let mut lower = VC::default();
+            /*
+              if we found the key kk from the deps in the todo HM,
+              then we check that the version in the todo is at least
+              as new as the one in the deps set.
+              If not, we proceeed with the operation.
+             */
             if let Some(vc2) = todo.get(kk) {
                 if vc <= &vc2.vc {
                     continue;
@@ -196,92 +223,134 @@ impl CCMeshService {
                 //     lower = vc2.vc.clone();
                 // }
             }
+
             let bkk = black.get_mut(kk);
+
             if bkk.is_none() {
                 continue;
             }
+
+            /*
+             the black (I-cache) stocks a list of versions for every key.
+             We iterate through the versions removing the versions that
+             are at least as news as the version of the key (kk) we have
+             in our dep set.
+             */
             let bkk = bkk.unwrap();
 
             let mut candidates = vec![];
             let mut idx = 0;
+
             while idx < bkk.len() {
                 let meta = &bkk[idx];
+
                 if meta.vc <= *vc {
                     candidates.push(bkk.remove(idx));
                 } else {
                     idx += 1;
                 }
             }
-            // #[allow(clippy::neg_cmp_op_on_partial_ord)]
-            // let mut candidates = bkk
-            //     .iter()
-            //     .filter(|&meta| meta.vc <= *vc && !(meta.vc <= lower));
-            // let m1 = candidates.next();
-            // if m1.is_none() {
-            //     continue;
-            // }
-            // let mut merged = m1.unwrap().clone();
-            // TODO: remove now?
+
             if candidates.is_empty() {
                 continue;
             }
+
+            /*
+             we merge our versions if there's more than one.
+             The merge operation will set the most recent value
+             and will merge the VCs as precised in the paper.
+             Dependencies are also merged
+             */
             let mut merged = candidates.remove(0);
             for m in candidates {
                 merged.merge_into(&m);
             }
+
+            /* 
+             Finally, we insert the merged result into our todo
+             and then we call recursively using the merged deps
+             */
             todo.insert_or_merge(kk.clone(), merged.no_deps());
             Self::get_deps2(black, &merged.deps, todo);
         }
     }
 
+    /*
+     This function integrates the dependencies from the black (I-cache)
+     to the white2 (C-cache).
+     Regarding the arguments, deps comes from the client. k is a key supposed
+     to be read or written.
+     m is a meta and is used as a flag to differenciate read request from write requests.
+     If m is `None`, we will return a `None` if the key is not found in the C-cache.
+     If m is not `None`, we're performing a write, and we will stock the value in meta
+     for the key k in the white2 cache will return .
+     */
     pub fn pull_deps2(&self, deps: &HashMap<String, VC>, k: K, m: Option<M>) -> Option<M> {
         let mut black = self.black.lock().unwrap();
         let mut todo = HashMap::default();
-        Self::get_deps2(&mut black, deps, &mut todo);
-        // let mut res = HashMap::default();
-        // for (kk, vc) in todo.iter() {
-        //     let bkk = black.get_mut(kk).unwrap();
-        //     let mut keep = vec![];
-        //     for meta in bkk.iter() {
-        //         if meta.vc <= *vc {
-        //             res.insert_or_merge(kk.clone(), meta.no_deps());
-        //             keep.push(false);
-        //         } else {
-        //             keep.push(true);
-        //         }
-        //     }
-        //     let mut iter = keep.iter();
-        //     bkk.retain(|_| *iter.next().unwrap());
-        // }
+        Self::get_deps2(&mut black, deps, &mut todo); // todo is all_deps
         drop(black);
+
         if MV {
             let mut white2 = self.white2.lock().unwrap();
+    
+            /*
+             the todo set has all the deps from the black. in get_deps2 we've 
+             already merged all the versions in deps and the black (I-cache). 
+             So we iterate through them to merge the dependences in todo with 
+             the versions in the white2 (C-cache) updating them to it.
+             */
             for (k_, m_) in todo.into_iter() {
                 let buf = white2.get_mut(&k_).unwrap();
                 let new_m = m_.merge(buf.back().unwrap());
                 buf.push(new_m);
             }
+
+            /*
+             If meta is not None, we merge it with the version of k in the 
+             white2 (C-cache) and then we update it to the white2 (C-cache).
+             Then we go out. This happens only when the function is called 
+             by ServerWrite() or ServerCommitTxn() and we're in the tail. 
+             Note that the VC i taken from the meta m.
+             */
             if let Some(m) = m {
                 let buf = white2.get_mut(&k).unwrap();
                 let new_m = m.merge(buf.back().unwrap());
                 buf.push(new_m);
+
                 return None;
             } else {
+                /* 
+                 If meta is None, then we will look for the version in the (C-cache) that
+                 we're requesting. We use the deps from the client to precise it: vc_in_deps.
+                 If we find that version, we return it. If not, we return None.
+                 */
                 let buf = white2.get_mut(&k).unwrap();
                 let vc_in_deps = deps.get(&k);
+
                 if let Some(vc_in_deps) = vc_in_deps {
                     for m in buf.iter() {
                         if m.vc == *vc_in_deps {
                             return Some(m.clone());
                         }
                     }
+
                     return None;
                 } else {
+                    /*
+                     If we're not able to find the key k in deps, we will look into the
+                     intersection (at key level) between deps and the deps of every key
+                     in the white2 (C-cache). if the versions match, it is a cut and then
+                     we can proceed with the read operation: we return the value as a meta
+                     object.
+                     */
                     let keys1: HashSet<&String> = deps.keys().collect();
+
                     for m in buf.iter() {
                         let keys2: HashSet<&String> = m.deps.keys().collect();
                         let keys3 = keys2.intersection(&keys1);
                         let mut valid = true;
+
                         for kk in keys3 {
                             let vc = deps.get(*kk).unwrap();
                             if m.vc != *vc {
@@ -289,14 +358,17 @@ impl CCMeshService {
                                 break;
                             }
                         }
+
                         if valid {
                             return Some(m.clone());
                         }
                     }
+
                     return None;
                 }
             }
         } else {
+            /* 
             let mut white = self.white.lock().unwrap();
             white.merge_into_no_deps(&todo);
             if let Some(m) = m {
@@ -309,6 +381,8 @@ impl CCMeshService {
                     panic!("pull_deps2: key {} not found", k);
                 }
             }
+            */
+            panic!("Only TCC is permited !");
         }
     }
 
@@ -387,6 +461,143 @@ impl Mesh for CCMeshService {
             vc: serde_json::to_string(&res.vc).unwrap(),
             // vc: serde_json::to_vec(&res.vc).unwrap(),
         }))
+    }
+
+    async fn client_commit_txn(
+        &self,
+        request: Request<ClientCommitTxnRequest>,
+    ) -> Result<Response<ClientCommitTxnResponse>, Status> {
+        let req = request.into_inner();
+        let res: VC;
+        {
+            let mut vc = self.vc.lock().unwrap();
+            vc.increment(self.id); // horloge increment
+            res = vc.clone();
+        }
+        
+        let deps: HashMap<String, VC> = serde_json::from_str(&req.deps).unwrap();
+        let writes: HashMap<K, V> = serde_json::from_str(&req.writes).unwrap();
+
+        info!("client_commit_txn {}", req.writes);
+
+        if DURABLE {
+            for (k, v) in writes.iter() {
+                let m = M {
+                    key: k.clone(),
+                    value: v.clone(),
+                    vc: res.clone(),
+                    deps: deps.clone(),
+                };
+    
+                self.redis.send(m).await.unwrap();
+            }
+        }
+
+
+        self.print_cache();
+
+        let next_req = ServerCommitTxnRequest {
+            writes: req.writes,
+            deps: req.deps,
+            vc: serde_json::to_string(&res).unwrap(),
+            headid: self.id as u32,
+            round: 1,
+        };
+
+        self.nextcc.send(next_req).unwrap();
+
+        Ok(Response::new(ClientCommitTxnResponse {
+            vc: serde_json::to_string(&res).unwrap(),
+        }))
+    }
+
+
+    async fn server_commit_txn(
+        &self,
+        request: Request<ServerCommitTxnRequest>,
+    ) -> Result<Response<()>, Status> {
+        // todo
+        self.print_cache();
+        let mut req = request.into_inner();
+        let writes: HashMap<K, V> = serde_json::from_str(&req.writes).unwrap();
+
+        if req.headid != ((self.id + 1) % T) as u32 && req.round == 1 {
+            let vc: VC = serde_json::from_str(&req.vc).unwrap();
+            let deps: HashMap<K, VC> = serde_json::from_str(&req.deps).unwrap();
+
+            { // maybe this is overkill. TODO: CHECK
+                let mut mg = self.black.lock().unwrap();
+
+                for (k, v) in writes.iter() {
+                    let m = M {
+                        key: k.clone(),
+                        value: v.clone(),
+                        vc: vc.clone(),
+                        deps: deps.clone(),
+                    };
+                    
+                    // what if i use the mutex guard only here
+                    match mg.entry(k.clone()) {
+                        Entry::Vacant(e) => {
+                            e.insert(vec![m]);
+                        }
+                        Entry::Occupied(mut e) => {
+                            e.get_mut().push(m);
+                        }
+                    }
+                }
+            }
+
+            self.nextcc.send(req).unwrap();
+
+            return Ok(Response::new(()));
+        }
+
+        if req.headid != ((self.id + 1) % T) as u32 {
+            self.nextcc.send(req).unwrap();
+            return Ok(Response::new(()));
+        }
+
+        if req.headid == ((self.id + 1) %T) as u32 && req.round == 1 {
+            req.round = 2;
+            self.nextcc.send(req).unwrap();
+            return Ok(Response::new(()));
+        }
+
+        /* if we're up to here, we're the tail */
+        let req_vc: VC = serde_json::from_str(&req.vc).unwrap();
+        let req_deps: HashMap<String, VC> = serde_json::from_str(&req.deps).unwrap();
+        let res_vc: VC;
+
+        {
+            let mut vc = self.vc.lock().unwrap();
+            vc.merge_into(&req_vc);
+            res_vc = vc.clone();
+        }
+
+        /* 
+        According to the paper, all the write will share 
+        the dependency set. Right now, i will just iterate 
+        the write set while i make the integration for 
+        every key. 
+        */
+
+        for (kk, vv) in writes.iter() {
+            self.pull_deps2(
+                &req_deps,
+                kk.clone(),
+                Some(M {
+                    key: kk.clone(),
+                    value: vv.clone(),
+                    vc: res_vc.clone(),
+                    deps: HashMap::default(),
+                }),
+            );
+        }
+        
+        info!("server_commit_end");
+        
+        Ok(Response::new(()))
     }
 
     async fn client_write(

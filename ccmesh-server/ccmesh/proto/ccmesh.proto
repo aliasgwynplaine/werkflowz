@@ -8,6 +8,8 @@ package ccmesh;
 service Mesh {
   rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse) {}
   rpc ClientRead (ClientReadRequest) returns (ClientReadResponse) {}
+  rpc ClientCommitTxn (ClientCommitTxnRequest) returns (ClientCommitTxnResponse) {}
+  rpc ServerCommitTxn (ServerCommitTxnRequest) returns (google.protobuf.Empty) {}
   rpc ClientWrite (ClientWriteRequest) returns (ClientWriteResponse) {}
   rpc ServerWrite (ServerWriteRequest) returns (google.protobuf.Empty) {}
   rpc IsVisible (IsVisibleRequest) returns (IsVisibleResponse) {}
@@ -32,6 +34,23 @@ message ClientWriteRequest {
 
 message ClientWriteResponse {
   string vc = 1;
+}
+
+message ClientCommitTxnRequest {
+  string deps = 1;
+  string writes = 2;
+}
+
+message ClientCommitTxnResponse {
+  string vc = 1;
+}
+
+message ServerCommitTxnRequest {
+  string writes = 1;
+  string vc = 2;
+  string deps = 3;
+  uint32 headid = 4;
+  uint32 round = 5;
 }
 
 message ServerWriteRequest {

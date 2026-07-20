@@ -12,5 +12,5 @@ pub type RedisConn = Connection<M, TcpStream, 512>;
 pub static DURABLE: bool = true;
 pub static MEDIA: bool = false;
 pub static SCALE: bool = false;
-pub static MV: bool = false;
+pub static MV: bool = true;
 pub static MV_SIZE: usize = 1;

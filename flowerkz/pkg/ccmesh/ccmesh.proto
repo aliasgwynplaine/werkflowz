@@ -10,6 +10,9 @@ service Mesh {
   rpc ClientRead (ClientReadRequest) returns (ClientReadResponse) {}
   rpc ClientWrite (ClientWriteRequest) returns (ClientWriteResponse) {}
   rpc ServerWrite (ServerWriteRequest) returns (google.protobuf.Empty) {}
+
+  rpc ClientCommitTxn(ClientCommitTxnRequest) returns (ClientCommitTxnResponse) {}
+  rpc ServerCommitTxn(ServerCommitTxnRequest) returns (google.protobuf.Empty) {}
 }
 
 message ClientReadRequest {
@@ -29,8 +32,24 @@ message ClientWriteRequest {
   string local = 4;
 }
 
+message ClientCommitTxnRequest {
+  string deps = 1;
+  string writes = 2;
+}
+
+message ClientCommitTxnResponse {
+  string vc = 1;
+}
+
 message ClientWriteResponse {
   string vc = 1;
+}
+
+message ServerCommitTxnRequest {
+  string writes = 1;
+  string vc = 2;
+  string deps = 3;
+  uint32 headid = 4;
 }
 
 message ServerWriteRequest {
