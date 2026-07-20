@@ -1,0 +1,26 @@
+[
+  {
+    "funcName": "fanout",
+    "funcId": 1,
+    "minWorkers": 2,
+    "maxWorkers": 4
+  },
+  {
+    "funcName": "incrementor0",
+    "funcId": 2,
+    "minWorkers": 2,
+    "maxWorkers": 4
+  },
+  {
+    "funcName": "incrementor1",
+    "funcId": 3,
+    "minWorkers": 2,
+    "maxWorkers": 4
+  },
+  {
+    "funcName": "fanin",
+    "funcId": 4,
+    "minWorkers": 2,
+    "maxWorkers": 4
+  }
+]
