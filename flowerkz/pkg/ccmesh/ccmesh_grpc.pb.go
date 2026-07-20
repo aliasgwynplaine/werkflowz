@@ -20,10 +20,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Mesh_HealthCheck_FullMethodName = "/ccmesh.Mesh/HealthCheck"
-	Mesh_ClientRead_FullMethodName  = "/ccmesh.Mesh/ClientRead"
-	Mesh_ClientWrite_FullMethodName = "/ccmesh.Mesh/ClientWrite"
-	Mesh_ServerWrite_FullMethodName = "/ccmesh.Mesh/ServerWrite"
+	Mesh_HealthCheck_FullMethodName     = "/ccmesh.Mesh/HealthCheck"
+	Mesh_ClientRead_FullMethodName      = "/ccmesh.Mesh/ClientRead"
+	Mesh_ClientWrite_FullMethodName     = "/ccmesh.Mesh/ClientWrite"
+	Mesh_ServerWrite_FullMethodName     = "/ccmesh.Mesh/ServerWrite"
+	Mesh_ClientCommitTxn_FullMethodName = "/ccmesh.Mesh/ClientCommitTxn"
+	Mesh_ServerCommitTxn_FullMethodName = "/ccmesh.Mesh/ServerCommitTxn"
 )
 
 // MeshClient is the client API for Mesh service.
@@ -34,6 +36,8 @@ type MeshClient interface {
 	ClientRead(ctx context.Context, in *ClientReadRequest, opts ...grpc.CallOption) (*ClientReadResponse, error)
 	ClientWrite(ctx context.Context, in *ClientWriteRequest, opts ...grpc.CallOption) (*ClientWriteResponse, error)
 	ServerWrite(ctx context.Context, in *ServerWriteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ClientCommitTxn(ctx context.Context, in *ClientCommitTxnRequest, opts ...grpc.CallOption) (*ClientCommitTxnResponse, error)
+	ServerCommitTxn(ctx context.Context, in *ServerCommitTxnRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type meshClient struct {
@@ -84,6 +88,26 @@ func (c *meshClient) ServerWrite(ctx context.Context, in *ServerWriteRequest, op
 	return out, nil
 }
 
+func (c *meshClient) ClientCommitTxn(ctx context.Context, in *ClientCommitTxnRequest, opts ...grpc.CallOption) (*ClientCommitTxnResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClientCommitTxnResponse)
+	err := c.cc.Invoke(ctx, Mesh_ClientCommitTxn_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *meshClient) ServerCommitTxn(ctx context.Context, in *ServerCommitTxnRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Mesh_ServerCommitTxn_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MeshServer is the server API for Mesh service.
 // All implementations must embed UnimplementedMeshServer
 // for forward compatibility.
@@ -92,6 +116,8 @@ type MeshServer interface {
 	ClientRead(context.Context, *ClientReadRequest) (*ClientReadResponse, error)
 	ClientWrite(context.Context, *ClientWriteRequest) (*ClientWriteResponse, error)
 	ServerWrite(context.Context, *ServerWriteRequest) (*emptypb.Empty, error)
+	ClientCommitTxn(context.Context, *ClientCommitTxnRequest) (*ClientCommitTxnResponse, error)
+	ServerCommitTxn(context.Context, *ServerCommitTxnRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMeshServer()
 }
 
@@ -113,6 +139,12 @@ func (UnimplementedMeshServer) ClientWrite(context.Context, *ClientWriteRequest)
 }
 func (UnimplementedMeshServer) ServerWrite(context.Context, *ServerWriteRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method ServerWrite not implemented")
+}
+func (UnimplementedMeshServer) ClientCommitTxn(context.Context, *ClientCommitTxnRequest) (*ClientCommitTxnResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClientCommitTxn not implemented")
+}
+func (UnimplementedMeshServer) ServerCommitTxn(context.Context, *ServerCommitTxnRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ServerCommitTxn not implemented")
 }
 func (UnimplementedMeshServer) mustEmbedUnimplementedMeshServer() {}
 func (UnimplementedMeshServer) testEmbeddedByValue()              {}
@@ -207,6 +239,42 @@ func _Mesh_ServerWrite_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Mesh_ClientCommitTxn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClientCommitTxnRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MeshServer).ClientCommitTxn(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Mesh_ClientCommitTxn_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MeshServer).ClientCommitTxn(ctx, req.(*ClientCommitTxnRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Mesh_ServerCommitTxn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ServerCommitTxnRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MeshServer).ServerCommitTxn(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Mesh_ServerCommitTxn_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MeshServer).ServerCommitTxn(ctx, req.(*ServerCommitTxnRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Mesh_ServiceDesc is the grpc.ServiceDesc for Mesh service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -229,6 +297,14 @@ var Mesh_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ServerWrite",
 			Handler:    _Mesh_ServerWrite_Handler,
+		},
+		{
+			MethodName: "ClientCommitTxn",
+			Handler:    _Mesh_ClientCommitTxn_Handler,
+		},
+		{
+			MethodName: "ServerCommitTxn",
+			Handler:    _Mesh_ServerCommitTxn_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
