@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"sync"
 
 	. "ccmeshclient/pkg/ccmesh"
 	. "ccmeshclient/pkg/common"
@@ -42,17 +42,25 @@ func (h *incrementorHandler) Call(ctx context.Context, input []byte) ([]byte, er
 	if envelope.Payload == "incrementor0" {
 		//x := client.Read("x")
 		//v_x, _ := strconv.Atoi(x)
-		client.Write("x", strconv.Itoa(12345))
+		client.Write("x", "12345")
 		client.Write("a", "123")
 	} else {
 		//y := client.Read("y")
 		//v_y, _ := strconv.Atoi(y)
-		client.Write("y", strconv.Itoa(98765))
+		client.Write("y", "98765")
 		client.Write("b", "5193")
 	}
 
-	client.SendMessage("fanin", "fanin")
+	var wg sync.WaitGroup
 
+	wg.Go(func() {
+		err := client.SendMessage("fanin", "fanin")
+		if err != nil {
+			panic(err)
+		}
+	})
+
+	wg.Wait()
 	//time.Sleep(3 * time.Second)
 
 	fmt.Println("Returning...")

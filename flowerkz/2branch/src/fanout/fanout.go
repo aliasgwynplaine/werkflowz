@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	. "ccmeshclient/pkg/ccmesh"
 	//. "ccmeshclient/pkg/common"
@@ -42,10 +43,25 @@ func (h *fanoutHandler) Call(ctx context.Context, input []byte) ([]byte, error) 
 	//client.Write(var_x, val_x)
 	//client.Write(var_y, val_y)
 
-	client.SendMessage("incrementor0", "incrementor0")
-	client.SendMessage("incrementor1", "incrementor1")
+	var wg sync.WaitGroup
+
+	wg.Go(func() {
+		err := client.SendMessage("incrementor0", "incrementor0")
+		if err != nil {
+			panic(err)
+		}
+	})
+
+	wg.Go(func() {
+		err := client.SendMessage("incrementor1", "incrementor1")
+		if err != nil {
+			panic(err)
+		}
+	})
 
 	//time.Sleep(3 * time.Second)
+
+	wg.Wait()
 
 	return []byte("Ok"), nil
 }

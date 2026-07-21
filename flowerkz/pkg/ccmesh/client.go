@@ -68,11 +68,13 @@ func (c *MeshGoClient) SendMessage(to string, v string) error {
 	CHECK(err)
 	output := bytes.NewBuffer(data)
 	fmt.Println("Sending request to: ", invokeurl)
-	go func() {
-		response, err := http.Post(invokeurl, "*/*", output)
-		CHECK(err)
-		fmt.Println("response: ", response)
-	}()
+	//go func() {
+	response, err := http.Post(invokeurl, "*/*", output)
+	if err != nil {
+		return err
+	}
+	fmt.Println("response: ", response)
+	//}()
 
 	fmt.Println("Message sent to ", to, " for txn ", c.Tid, "through ", invokeurl)
 
@@ -179,12 +181,11 @@ func (c *MeshGoClient) listenIncommingMessages() {
 
 			var envelope Envelope
 			err := decoder.Decode(&envelope)
-
-			CHECK(err)
+			CHECK(err) // maybe return error to sender here
+			fmt.Fprint(rw, "Ok")
 
 			c.recv(envelope)
 
-			fmt.Fprint(rw, "OKK")
 		},
 	))
 
@@ -240,7 +241,7 @@ func (c *MeshGoClient) deliver(envelope Envelope) {
 
 	for k, v := range envelope.Writes {
 		if _, ok := c.Writes[k]; ok {
-			panic("Operation not permited: concurrent write in txn.")
+			panic("Operation not permited: concurrent write in txn.") // maybe return error to the sender
 		}
 
 		fmt.Println("merging ", k, ": ", v)
