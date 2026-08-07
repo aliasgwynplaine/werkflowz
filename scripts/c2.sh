@@ -34,6 +34,7 @@ show-experiments() {
 	echo "	writernreader"
 	echo "	2branch"
 	echo "	3branch"
+	echo "	tccverifier"
 	echo
 }
 
@@ -54,6 +55,9 @@ verify-experiment() {
 			return 0
 			;;
 		3branch)
+			return 0
+			;;
+		tccverifier)
 			return 0
 			;;
 		*)
@@ -112,6 +116,7 @@ run-gateway)
 	verify-experiment $3
 	mapfile -t gw < $2
 	bash remote_exec.sh $gw run_gateway.sh $3
+	bash remote_exec.sh $gw run_snitch.sh $3
 	sleep 1
 	;;
 
@@ -123,6 +128,7 @@ kill-gateway)
 
 	mapfile -t gw < $2
 	ssh root@$gw 'pgrep gateway && killall gateway; exit 0'
+	ssh root@$gw 'pgrep snitch && killall snitch; exit 0'
 	;;
 
 run-engines)
