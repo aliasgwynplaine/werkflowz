@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"ccmeshclient/pkg/ccmesh"
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
+	"net/http"
 	"strconv"
 
 	"cs.utexas.edu/zjia/faas"
@@ -39,13 +42,30 @@ func (h *readerwriterHandler) Call(ctx context.Context, input []byte) ([]byte, e
 	client.CommitTxn()
 	fmt.Println("-----------------")
 
-	response, err := h.env.InvokeFunc(ctx, "finalreader", input)
+	/* response, err := h.env.InvokeFunc(ctx, "finalreader", input)
 
 	if err != nil {
 		panic("erro: InvokeFunc")
 	}
+	*/
 
-	return []byte(response), nil
+	invokeurl := "http://" + ccmesh.NIGHTCORE_GW_ADDR + ":8080/function/finalreader"
+	output := bytes.NewBuffer(input)
+	response, err := http.Post(invokeurl, "*/*", output)
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer response.Body.Close()
+
+	realresponse, err := io.ReadAll(response.Body)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return []byte(realresponse), nil
 }
 
 func main() {
