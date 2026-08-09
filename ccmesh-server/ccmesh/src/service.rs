@@ -455,12 +455,12 @@ impl Mesh for CCMeshService {
         let k = req.key;
         // let deps: HashMap<String, VC> = serde_json::from_slice(&req.deps).unwrap();
         let deps: HashMap<String, VC> = serde_json::from_str(&req.deps).unwrap();
-        info!("client_read {} (before):", k);
+        info!("[{:?}] client_read {} (before):", self.id, k);
         self.print_cache();
         let res = self.pull_deps2(&deps, k, None);
         // let res = self.white.lock().unwrap().get(&k).unwrap().clone();
         // assert!(res.deps.is_empty());
-        info!("client_read (after):");
+        info!("[{:?}] client_read (after):", self.id);
         self.print_cache();
 
         if res.is_none() {
@@ -493,7 +493,7 @@ impl Mesh for CCMeshService {
         let deps: HashMap<String, VC> = serde_json::from_str(&req.deps).unwrap();
         let writes: HashMap<K, V> = serde_json::from_str(&req.writes).unwrap();
 
-        info!("client_commit_txn {}", req.writes);
+        info!("[{:?}] client_commit_txn {}", self.id, req.writes);
 
         if DURABLE {
             for (k, v) in writes.iter() {
@@ -531,10 +531,11 @@ impl Mesh for CCMeshService {
         &self,
         request: Request<ServerCommitTxnRequest>,
     ) -> Result<Response<()>, Status> {
-        // todo
-        self.print_cache();
         let mut req = request.into_inner();
         let writes: HashMap<K, V> = serde_json::from_str(&req.writes).unwrap();
+
+        info!("[{:?}] server_commit_txn. writes: {}", self.id, req.writes);
+        self.print_cache();
 
         if req.headid != ((self.id + 1) % T) as u32 && req.round == 1 {
             let vc: VC = serde_json::from_str(&req.vc).unwrap();
