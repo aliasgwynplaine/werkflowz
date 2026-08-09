@@ -1,5 +1,5 @@
 {
-    "NB_NODES": 4,
+    "NB_NODES": 3,
     "fprocess_mode": "go",
     "fuxmap": [
 	    "writer",
