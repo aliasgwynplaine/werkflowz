@@ -539,11 +539,9 @@ impl Mesh for CCMeshService {
             let vc: VC = serde_json::from_str(&req.vc).unwrap();
             let deps: HashMap<K, VC> = serde_json::from_str(&req.deps).unwrap();
 
-            { // maybe this is overkill. TODO: CHECK
-                let mut mg = self.black.lock().unwrap();
-
+            {
                 for (k, v) in writes.iter() {
-                    let m = M {
+                    let m: Meta<String, String, DenseVC<3>> = M {
                         key: k.clone(),
                         value: v.clone(),
                         vc: vc.clone(),
@@ -551,7 +549,7 @@ impl Mesh for CCMeshService {
                     };
                     
                     // what if i use the mutex guard only here
-                    match mg.entry(k.clone()) {
+                    match self.black.lock().unwrap().entry(k.clone()) {
                         Entry::Vacant(e) => {
                             e.insert(vec![m]);
                         }
