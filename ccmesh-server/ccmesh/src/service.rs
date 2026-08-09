@@ -313,6 +313,7 @@ impl CCMeshService {
              Note that the VC i taken from the meta m.
              */
             if let Some(m) = m {
+                info!("[{:?}] on the tail! merging", self.id);
                 let buf = white2.get_mut(&k)?;
                 let new_m = m.merge(buf.back().unwrap());
                 buf.push(new_m);
@@ -339,7 +340,7 @@ impl CCMeshService {
                  we're requesting. We use the deps from the client to precise it: vc_in_deps.
                  If we find that version, we return it. If not, we return None.
                  */
-                let buf = white2.get_mut(&k)?;
+                let buf = white2.get_mut(&k).unwrap();
                 let vc_in_deps = deps.get(&k);
 
                 if let Some(vc_in_deps) = vc_in_deps {
