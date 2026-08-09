@@ -30,10 +30,10 @@ func (h *finalreaderHandler) Call(ctx context.Context, input []byte) ([]byte, er
 	RunId := string(input)
 
 	//client.InitTxn()
-	value_x := client.Read("x")
-	value_y := client.Read("y")
-	fmt.Println(RunId, "x = ", value_x)
-	fmt.Println(RunId, "y = ", value_y)
+	value_x := client.Read("1")
+	value_y := client.Read("2")
+	fmt.Println(RunId, "1 = ", value_x)
+	fmt.Println(RunId, "2 = ", value_y)
 	//client.CommitTxn()
 
 	return []byte("Ok"), nil

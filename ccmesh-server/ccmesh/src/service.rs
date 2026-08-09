@@ -160,14 +160,14 @@ impl CCMeshService {
         info!("white.len():   {}", white_l.len());
         info!("black.len():   {}", black_l.len());
         info!(
-            "white:   {:?}",
+            "[{:?}] white:   {:?}", self.id,
             white
                 .iter()
                 .filter(|(_, m)| m.vc != VC::default())
                 .collect::<Vec<_>>()
         );
         info!(
-            "black:   {:?}",
+            "[{:?}] black:   {:?}", self.id,
             black
                 .iter()
                 .filter(|(_, ms)| ms.len() > 1)
@@ -316,6 +316,21 @@ impl CCMeshService {
                 let buf = white2.get_mut(&k)?;
                 let new_m = m.merge(buf.back().unwrap());
                 buf.push(new_m);
+
+                /*
+                this is for arbitrary key tests. Maybe you will use it later 
+                match white2.get_mut(&k) {
+                    Some(buf) => {
+                        let new_m = m.merge(buf.back().unwrap());
+                        buf.push(new_m);
+                    }
+                    None => {
+                        let mut buf = AllocRingBuffer::new(MV_SIZE);
+                        buf.push(m);
+                        white2.insert(k, buf);
+                    }
+                }
+                */
 
                 return None;
             } else {
@@ -558,6 +573,7 @@ impl Mesh for CCMeshService {
         }
 
         if req.headid == ((self.id + 1) %T) as u32 && req.round == 1 {
+            info!("[{:?}] about start round 2", self.id);
             req.round = 2;
             self.nextcc.send(req).unwrap();
             return Ok(Response::new(()));

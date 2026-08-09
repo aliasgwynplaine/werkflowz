@@ -36,9 +36,9 @@ func (h *writerHandler) Call(ctx context.Context, input []byte) ([]byte, error) 
 	RunId := string(input)
 
 	//client.InitTxn()
-	client.Write("x", value)
+	client.Write("1", value)
 	client.CommitTxn()
-	fmt.Println(RunId, "x <-", value)
+	fmt.Println(RunId, "1 <-", value)
 	fmt.Println("--------------------")
 
 	/*
