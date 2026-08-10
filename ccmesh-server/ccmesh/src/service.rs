@@ -154,17 +154,18 @@ impl CCMeshService {
 
     pub fn print_cache(&self) {
         let white = self.white.lock().unwrap();
+        let white2 = self.white2.lock().unwrap();
         let black = self.black.lock().unwrap();
-        let white_l: Vec<u8> = bincode::serialize(&white.clone()).unwrap();
-        let black_l: Vec<u8> = bincode::serialize(&black.clone()).unwrap();
-        info!("white.len():   {}", white_l.len());
-        info!("black.len():   {}", black_l.len());
         info!(
             "[{:?}] white:   {:?}", self.id,
             white
                 .iter()
                 .filter(|(_, m)| m.vc != VC::default())
                 .collect::<Vec<_>>()
+        );
+        info!(
+            "[{:?}] white2:   {:?}", self.id,
+            white2.iter().filter(|(_, ms)| ms.back().unwrap().vc != VC::default()).collect::<Vec<_>>()
         );
         info!(
             "[{:?}] black:   {:?}", self.id,
@@ -314,10 +315,12 @@ impl CCMeshService {
              */
             if let Some(m) = m {
                 info!("[{:?}] on the tail! merging", self.id);
-                let buf = white2.get_mut(&k)?;
+                let buf = white2.get_mut(&k).unwrap();
                 let new_m = m.merge(buf.back().unwrap());
                 buf.push(new_m);
 
+                info!("[{:?}] merged!", self.id);
+                self.print_cache();
                 /*
                 this is for arbitrary key tests. Maybe you will use it later 
                 match white2.get_mut(&k) {
@@ -346,10 +349,14 @@ impl CCMeshService {
                 if let Some(vc_in_deps) = vc_in_deps {
                     for m in buf.iter() {
                         if m.vc == *vc_in_deps {
+                            info!("[{:?}] exact vc in deps!", self.id);
+                            self.print_cache();
                             return Some(m.clone());
                         }
                     }
 
+                    info!("[{:?}] version not found uu", self.id);
+                    self.print_cache();
                     return None;
                 } else {
                     /*
@@ -375,10 +382,14 @@ impl CCMeshService {
                         }
 
                         if valid {
+                            info!("[{:?}] valid!", self.id);
+                            self.print_cache();
                             return Some(m.clone());
                         }
                     }
 
+                    info!("[{:?}] not valid uu", self.id);
+                    self.print_cache();
                     return None;
                 }
             }
@@ -493,6 +504,10 @@ impl Mesh for CCMeshService {
         let deps: HashMap<String, VC> = serde_json::from_str(&req.deps).unwrap();
         let writes: HashMap<K, V> = serde_json::from_str(&req.writes).unwrap();
 
+        //for (k, _) in writes.iter() {
+        //    deps.insert_or_merge(k.clone(), res.clone());
+        //}
+
         info!("[{:?}] client_commit_txn {}", self.id, req.writes);
 
         if DURABLE {
@@ -513,7 +528,7 @@ impl Mesh for CCMeshService {
 
         let next_req = ServerCommitTxnRequest {
             writes: req.writes,
-            deps: req.deps,
+            deps: serde_json::to_string(&deps).unwrap(),
             vc: serde_json::to_string(&res).unwrap(),
             headid: self.id as u32,
             round: 1,
@@ -535,7 +550,6 @@ impl Mesh for CCMeshService {
         let writes: HashMap<K, V> = serde_json::from_str(&req.writes).unwrap();
 
         info!("[{:?}] server_commit_txn. writes: {}", self.id, req.writes);
-        self.print_cache();
 
         if req.headid != ((self.id + 1) % T) as u32 && req.round == 1 {
             let vc: VC = serde_json::from_str(&req.vc).unwrap();
@@ -543,6 +557,7 @@ impl Mesh for CCMeshService {
 
             {
                 for (k, v) in writes.iter() {
+                    info!("[{:?}] adding k: {} ,v: {}", self.id, k, v);
                     let m: Meta<String, String, DenseVC<3>> = M {
                         key: k.clone(),
                         value: v.clone(),
@@ -550,7 +565,6 @@ impl Mesh for CCMeshService {
                         deps: deps.clone(),
                     };
                     
-                    // what if i use the mutex guard only here
                     match self.black.lock().unwrap().entry(k.clone()) {
                         Entry::Vacant(e) => {
                             e.insert(vec![m]);
@@ -562,18 +576,23 @@ impl Mesh for CCMeshService {
                 }
             }
 
+            info!("[{:?}] added to the black and sending", self.id);
+            self.print_cache();
             self.nextcc.send(req).unwrap();
 
             return Ok(Response::new(()));
         }
 
         if req.headid != ((self.id + 1) % T) as u32 {
+            info!("[{:?}] fwd", self.id);
+            self.print_cache();
             self.nextcc.send(req).unwrap();
             return Ok(Response::new(()));
         }
 
         if req.headid == ((self.id + 1) %T) as u32 && req.round == 1 {
             info!("[{:?}] about start round 2", self.id);
+            self.print_cache();
             req.round = 2;
             self.nextcc.send(req).unwrap();
             return Ok(Response::new(()));
