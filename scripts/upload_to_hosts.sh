@@ -14,11 +14,12 @@ hostlist=$2
 
 mapfile -t rhosts < "$hostlist"
 
-if [ -d "$fichier" ]; then
-	opts="-r"
-fi
+#opts="-o StrictHostKeyChecking=no"
+opts=(-avz -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null")
 
-opts="-o StrictHostKeyChecking=no $opts"
+#if [ -d "$fichier" ]; then
+#	opts="-r $opts"
+#fi
 
 for rhost in ${rhosts[@]}; do
 	if ! nc -z $rhost 22; then
@@ -26,7 +27,7 @@ for rhost in ${rhosts[@]}; do
 		exit 2
 	fi
 	echo "[*] coping files to $rhost"
-	scp $opts $fichier root@$rhost:~/
+	rsync ${opts} $fichier root@$rhost:~/
 	echo "[*] $rhost done!"
 done
 

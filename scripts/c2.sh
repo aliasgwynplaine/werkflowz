@@ -8,6 +8,7 @@ usage () {
 	echo
 	echo "commands:"
 	echo "	deploy-nodes <nb> <h:mm:ss> <node-env-file> <db-env-file> <key-file>"
+	echo "	upload-infra <file.host>"
 	echo "	upload <file> <host>"
 	echo "	upload-to-hosts <file> <file.host>"
 	echo "	run-gateway <gateway.host> <experiment-name>"
@@ -82,6 +83,17 @@ deploy-nodes)
 	fi
 
 	bash deploy_nodes.sh $2 $3 $4 $5 $6
+	;;
+
+upload-infra)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 1
+	fi
+
+	bash upload_to_hosts.sh ../flowerkz $2
+	bash upload_to_hosts.sh ../ccmesh-server $2
+	bash upload_to_hosts.sh ../snitch $2
 	;;
 
 upload)
@@ -304,18 +316,18 @@ retrieve-logs)
 	[ -d "logs" ] && rm -rf logs
 	mkdir logs
 
-	scp root@$redishost:~/redis.log logs/redis.log
+	rsync root@$redishost:~/redis.log logs/redis.log
 
-	scp root@$gatewayhost:~/flowerkz/$experiment/outputs/* logs/
+	rsync root@$gatewayhost:~/flowerkz/$experiment/outputs/* logs/
 
 	cmd="ls ~/flowerkz/$experiment/outputs/"
 
 	for wrkr in $workerhosts; do
 		ssh root@$wrkr $cmd |
 			while read -r rfile; do
-				scp -r root@$wrkr:~/flowerkz/$experiment/outputs/$rfile logs/"${wrkr}_${rfile}"
+				rsync root@$wrkr:~/flowerkz/$experiment/outputs/$rfile logs/"${wrkr}_${rfile}"
 			done
-		scp root@$wrkr:~/ccmesh_server.log logs/${wrkr}_ccmesh_server.log
+		rsync root@$wrkr:~/ccmesh_server.log logs/${wrkr}_ccmesh_server.log
 	done
 
 	echo "Done ! Logs are in the logs folder :P"
