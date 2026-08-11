@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	. "ccmeshclient/pkg/ccmesh"
+	. "ccmeshclient/pkg/ccmesg"
 	. "ccmeshclient/pkg/common"
 
 	"cs.utexas.edu/zjia/faas"

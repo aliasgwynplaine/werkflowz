@@ -2,6 +2,12 @@ use crate::config::T;
 use hz_causal::*;
 use hz_ipc::connection::Connection;
 use tokio::net::TcpStream;
+//use crdts::PNCounter;
+
+//pub enum DBEntry {
+//    Str(String),
+//    Counter(PNCounter<i32>),
+//}
 
 pub type K = String;
 pub type V = String;

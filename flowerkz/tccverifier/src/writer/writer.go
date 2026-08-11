@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"ccmeshclient/pkg/ccmesh"
+	"ccmeshclient/pkg/ccmesg"
 	"context"
 	"fmt"
 	"io"
@@ -31,7 +31,7 @@ func (f *funcHandlerFactory) GrpcNew(env types.Environment, service string) (typ
 
 func (h *writerHandler) Call(ctx context.Context, input []byte) ([]byte, error) {
 	fmt.Println("writer: ", input, string(input))
-	client := ccmesh.NewMeshGoClient("writer")
+	client := ccmesg.NewMeshGoClient("writer")
 	value := strconv.Itoa(1 + rand.Intn(9999))
 	RunId := string(input)
 
@@ -49,7 +49,7 @@ func (h *writerHandler) Call(ctx context.Context, input []byte) ([]byte, error) 
 		}
 	*/
 
-	invokeurl := "http://" + ccmesh.NIGHTCORE_GW_ADDR + ":8080/function/readerwriter"
+	invokeurl := "http://" + ccmesg.NIGHTCORE_GW_ADDR + ":8080/function/readerwriter"
 	output := bytes.NewBuffer(input)
 	response, err := http.Post(invokeurl, "*/*", output)
 

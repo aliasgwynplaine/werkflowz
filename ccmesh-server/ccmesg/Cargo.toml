@@ -1,5 +1,5 @@
 [package]
-name = "hz-mesh"
+name = "ccmesg"
 version = "0.1.0"
 edition = "2021"
 
@@ -22,7 +22,6 @@ hz-causal = {path = "../causal"}
 hz-ipc = {path = "../ipc"}
 hz-config = {path = "../config"}
 hz-redis = {path = "../redis"}
-hz-workload = {path = "../workload"}
 
 [build-dependencies]
 tonic-build = "0.8"

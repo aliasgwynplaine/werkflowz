@@ -12,16 +12,10 @@ pub struct Config {
 pub const MODE: &str = {
     if cfg!(feature = "ccmesh") {
         "mesh"
-    } else if cfg!(feature = "opt") {
-        "opt"
-    } else if cfg!(feature = "con") {
-        "con"
-    } else if cfg!(feature = "base") {
-        "baseline"
     } else if cfg!(feature = "cb") {
         "cb"
-    } else if cfg!(feature = "faas") {
-        "faas"
+    } else if cfg!(feature = "ccmesg") {
+        "ccmesg"
     } else {
         "unknown"
     }

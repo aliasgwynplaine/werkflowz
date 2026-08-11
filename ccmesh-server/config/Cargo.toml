@@ -16,12 +16,7 @@ serde.workspace = true
 serde_json.workspace = true
 
 [features]
-default = ["ccmesh", "cloud"]
+default = ["ccmesh"]
 ccmesh = []
-opt = []
-con = []
+ccmesg = []
 cb = []
-faas = []
-base = []
-local = []
-cloud = []

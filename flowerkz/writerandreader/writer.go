@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"ccmeshclient/pkg/ccmesh"
+	"ccmeshclient/pkg/ccmesg"
 
 	"cs.utexas.edu/zjia/faas"
 	"cs.utexas.edu/zjia/faas/types"
@@ -57,7 +57,7 @@ func (h *writerHandler) Call(ctx context.Context, input []byte) ([]byte, error) 
 	fmt.Println("data: ", data)
 	fmt.Println("writing var 001 -> ", randNum)
 
-	cclient := ccmesh.NewMeshGoClient()
+	cclient := ccmesg.NewMeshGoClient()
 	if cclient.Rpcc == nil {
 		fmt.Println("Rpcc is null in the function")
 	}

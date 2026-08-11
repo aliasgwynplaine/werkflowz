@@ -6,7 +6,7 @@ import (
 	"os"
 	"sync"
 
-	. "ccmeshclient/pkg/ccmesh"
+	. "ccmeshclient/pkg/ccmesg"
 	//. "ccmeshclient/pkg/common"
 
 	"cs.utexas.edu/zjia/faas"

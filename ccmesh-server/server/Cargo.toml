@@ -12,3 +12,4 @@ sysinfo.workspace = true
 hz-config = {path = "../config"}
 hz-mesh = {path = "../ccmesh"}
 hz-cb = {path = "../cb"}
+ccmesg = {path = "../ccmesg" }
