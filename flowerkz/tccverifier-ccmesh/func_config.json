@@ -1,0 +1,20 @@
+[
+  {
+    "funcName": "writer",
+    "funcId": 1,
+    "minWorkers": 2,
+    "maxWorkers": 4
+  },
+  {
+    "funcName": "readerwriter",
+    "funcId": 2,
+    "minWorkers": 2,
+    "maxWorkers": 4
+  },
+  {
+    "funcName": "finalreader",
+    "funcId": 3,
+    "minWorkers": 2,
+    "maxWorkers": 4
+  }
+]

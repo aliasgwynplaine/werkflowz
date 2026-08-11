@@ -1,12 +1,14 @@
 package ccmesh
 
 import (
+	. "ccmeshclient/pkg/common"
 	"context"
 	"encoding/json"
-	. "github.com/eniac/ccmesh/pkg/common"
+	"fmt"
+	"time"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"time"
 )
 
 var RPCC *MeshClient = nil
@@ -105,6 +107,23 @@ func InitClient() {
 	if RPCC == nil {
 		RPCC = CreateClient()
 	}
+}
+
+func NewMeshGoClient() *MeshGoClient {
+	var client MeshGoClient
+	InitClient()
+
+	if client.Rpcc == nil {
+		fmt.Println("newmeshgoclient: new rpcc")
+		client.Rpcc = RPCC
+	} else {
+		fmt.Println("newmeshgoclient: uu")
+	}
+
+	client.Local = make(map[string]*Meta)
+	client.Deps = make(map[string]VC)
+
+	return &client
 }
 
 func Run(input []byte) []byte {
