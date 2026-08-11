@@ -23,7 +23,7 @@ use tracing::info;
 
 pub mod cc_mesh {
     #![allow(clippy::derive_partial_eq_without_eq)]
-    tonic::include_proto!("ccmesh");
+    tonic::include_proto!("ccmesg");
 }
 
 pub static CLIENT: OnceCell<MeshClient<tonic::transport::Channel>> = OnceCell::new();
