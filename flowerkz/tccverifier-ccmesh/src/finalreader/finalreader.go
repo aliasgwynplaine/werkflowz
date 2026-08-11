@@ -1,7 +1,7 @@
 package main
 
 import (
-	"ccmeshclient/pkg/ccmesg"
+	"ccmeshclient/pkg/ccmesh"
 	"context"
 	"fmt"
 
@@ -26,7 +26,7 @@ func (f *funcHandlerFactory) GrpcNew(env types.Environment, service string) (typ
 
 func (h *finalreaderHandler) Call(ctx context.Context, input []byte) ([]byte, error) {
 	fmt.Println("finalreader")
-	client := ccmesg.NewMeshGoClient("finalreader")
+	client := ccmesh.NewMeshGoClient()
 	RunId := string(input)
 
 	//client.InitTxn()
