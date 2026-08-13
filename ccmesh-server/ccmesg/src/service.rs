@@ -587,7 +587,34 @@ impl Mesh for CCMeshService {
         let mut req = request.into_inner();
         let writes: HashMap<K, V> = serde_json::from_str(&req.writes).unwrap();
 
-        info!("[{:?}] server_commit_txn. writes: {}", self.id, req.writes);
+        info!("[{:?}] server_commit_txn. writes: {} round: {}", self.id, req.writes, req.round.clone());
+
+        if req.round == 3 {
+            if req.headid != ((self.id + 1) % T) as u32 {
+                /*
+                now we need to notify the others that it is safe to
+                integrate the write
+                */
+                let req_vc : VC = serde_json::from_str(&req.vc).unwrap();
+                info!("[{:?}] integration phase! vc: {:?} req_vc: {:?}",
+                    self.id, self.vc.lock().unwrap().clone(), req_vc.clone());
+
+                for (kk, _) in writes.iter() {
+                    info!("[{:?}] integrating {:?}", self.id, kk.clone());
+                    let mut fk_deps = HashMap::default();
+                    fk_deps.insert(kk.clone(), req_vc.clone());
+                    self.pull_deps2(&fk_deps, kk.clone(), None);
+                }
+
+                info!("[{:?}] server_commit_txn FINISHED! writes: {:?}", self.id, writes);
+                self.print_cache();
+                self.nextcc.send(req).unwrap();
+
+                return Ok(Response::new(()));
+            } else {
+                return Ok(Response::new(()));
+            }
+        }
 
         if req.headid != ((self.id + 1) % T) as u32 && req.round == 1 {
             info!("[{:?}] FIRST TIME! Adding to black", self.id);
@@ -675,7 +702,10 @@ impl Mesh for CCMeshService {
             );
         }
         
-        info!("[{:?}] server_commit_end. writes: {:?}", self.id, writes);
+        req.round = 3;
+        req.vc = serde_json::to_string(&res_vc).unwrap();
+        info!("[{:?}] server_commit_end. writes: {:?} starting round {}", self.id, writes, req.round.clone());
+        self.nextcc.send(req).unwrap();
         self.print_cache();
         
         Ok(Response::new(()))
@@ -926,6 +956,7 @@ impl Mesh for CCMeshService {
 
 pub async fn run(id: usize) {
     let ccmesh_service = CCMeshService::new(id);
+    info!("[{:?}] MODE: {:?}", id, MODE);
 
     Server::builder()
         .add_service(MeshServer::new(ccmesh_service))

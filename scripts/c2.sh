@@ -36,6 +36,7 @@ show-experiments() {
 	echo "	2branch"
 	echo "	3branch"
 	echo "	tccverifier"
+	echo "	tccverifier-ccmesh"
 	echo
 }
 
@@ -59,6 +60,9 @@ verify-experiment() {
 			return 0
 			;;
 		tccverifier)
+			return 0
+			;;
+		tccverifier-ccmesh)
 			return 0
 			;;
 		*)
