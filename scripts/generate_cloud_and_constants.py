@@ -9,7 +9,7 @@ tmplt_cloud_json="""{
     "PEERS": %s,
     "MAXKEY": 100000,
     "REDISIP": "%s",
-    "GATEWAY": "%s"
+    "GATEWAY": "%s:8080"
 }
 """
 
