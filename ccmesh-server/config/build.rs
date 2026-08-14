@@ -49,8 +49,8 @@ pub const NLAMBDA: usize = {};
 pub const PEERS: [&str; {}] = {:?};
 pub const NIGHTCORES: [&str; {}] = {:?};
 pub const MAXKEY: i32 = {};
-pub const REDISIP: &str = {:?};,
-pub const GATEWAY: &str = {:?};"
+pub const REDISIP: &str = {:?};
+pub const GATEWAY: &str = {:?};",
         MODE,
         n_peers,
         config.NLAMBDA,
