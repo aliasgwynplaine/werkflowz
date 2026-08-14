@@ -7,6 +7,9 @@ pub enum Op {
     R(String),
     W(String, String),
     M,
+    I,
+    O(i32),
+    C,
 }
 
 // #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -19,6 +22,7 @@ pub struct WorkloadBuilder {
     pub nw: i32,
     pub nr: i32,
     pub nm: i32,
+    pub no: i32, // grade of fan-out
     pub rng: ThreadRng,
     pub zipf: Option<zipf::ZipfDistribution>,
     pub uniform: Option<rand::distributions::Uniform<i32>>,
@@ -26,7 +30,7 @@ pub struct WorkloadBuilder {
 
 impl WorkloadBuilder {
     pub fn n10m1(self) -> Self {
-        self.num_read(6).num_write(4).num_migrate(1)
+        self.num_read(6).num_write(4).num_migrate(1).num_fanout()
     }
 
     pub fn num_write(mut self, nw: i32) -> Self {
@@ -41,6 +45,11 @@ impl WorkloadBuilder {
 
     pub fn num_migrate(mut self, nm: i32) -> Self {
         self.nm = nm;
+        self
+    }
+
+    pub fn num_fanout(mut self, no: i32) -> Self {
+        self.no = no;
         self
     }
 
@@ -82,12 +91,15 @@ impl WorkloadBuilder {
     pub fn build(&mut self) -> Workload {
         assert!(self.nr + self.nw + self.nm > 0, "num must be positive");
         let mut ops = vec![];
+
         for _ in 0..self.nr {
             ops.push(Op::R(self.sample()));
         }
+
         for _ in 0..self.nm {
             ops.push(Op::M);
         }
+
         if self.delay_writes {
             ops.shuffle(&mut self.rng);
             for _ in 0..self.nw {
@@ -97,8 +109,37 @@ impl WorkloadBuilder {
             for _ in 0..self.nw {
                 ops.push(Op::W(self.sample(), format!("{:0>8}", self.sample())));
             }
+
             ops.shuffle(&mut self.rng);
         }
+
+        if self.no > 0 {
+            ops.push(Op::O(self.no));
+            
+            for _ in 0..self.no {
+                let mut tmp = vec![];
+                let limit = (self.sample_int() % 5) + 1;
+
+                for _ in 0..limit {
+                    tmp.push(Op::R(self.sample()));
+                }
+
+                let limit = (self.sample_int() % 5) + 1;
+
+                for _ in 0..limit {
+                    tmp.push(Op::W(self.sample(), format!("{:0>8}", self.sample())));
+                }
+
+                tmp.shuffle(&mut self.rng);
+                tmp.push(Op::I);
+                ops.append(tmp);
+            }
+
+            // we could add something here but later :P
+
+            ops.push(Op::C);
+        }
+
         ops
     }
 }
