@@ -7,6 +7,7 @@ pub struct Config {
     pub MAXKEY: i32,
     pub PEERS: Vec<String>,
     pub REDISIP: String,
+    pub GATEWAY: String,
 }
 
 pub const MODE: &str = {
@@ -47,6 +48,7 @@ pub const T: usize = {};
 pub const NLAMBDA: usize = {};
 pub const PEERS: [&str; {}] = {:?};
 pub const NIGHTCORES: [&str; {}] = {:?};
+pub const GATEWAY: &str = {:?};
 pub const MAXKEY: i32 = {};
 pub const REDISIP: &str = {:?};",
         MODE,
@@ -57,7 +59,8 @@ pub const REDISIP: &str = {:?};",
         n_peers,
         nightcores,
         config.MAXKEY,
-        config.REDISIP
+        config.REDISIP,
+        config.GATEWAY
     );
     std::fs::write(&path, out).unwrap();
 }
