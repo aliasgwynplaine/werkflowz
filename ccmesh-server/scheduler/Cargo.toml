@@ -23,6 +23,7 @@ hz-config = { path = "../config" }
 hz-mesh = { path = "../ccmesh" }
 hz-cb = { path = "../cb" }
 hz-causal = { path = "../causal" }
+hz-workload = { path = "../workload" }
 
 [dependencies.uuid]
 version = "1.0.0-alpha.1"

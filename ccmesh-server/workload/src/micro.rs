@@ -30,7 +30,7 @@ pub struct WorkloadBuilder {
 
 impl WorkloadBuilder {
     pub fn n10m1(self) -> Self {
-        self.num_read(6).num_write(4).num_migrate(1).num_fanout()
+        self.num_read(6).num_write(4).num_migrate(1).num_fanout(0)
     }
 
     pub fn num_write(mut self, nw: i32) -> Self {
@@ -132,7 +132,7 @@ impl WorkloadBuilder {
 
                 tmp.shuffle(&mut self.rng);
                 tmp.push(Op::I);
-                ops.append(tmp);
+                ops.append(&mut tmp);
             }
 
             // we could add something here but later :P
@@ -163,6 +163,9 @@ mod tests {
                 }
                 Op::M => {
                     assert!(!writing)
+                }
+                _ => {
+
                 }
             }
         }

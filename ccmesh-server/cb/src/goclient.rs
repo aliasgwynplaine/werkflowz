@@ -1,6 +1,7 @@
 use crate::cb::mesh_client::MeshClient;
 use crate::service::{rpc_client, CLIENTS};
 use hz_config::*;
+use hz_workload::Workload;
 use rustc_hash::FxHashMap as HashMap;
 use rustc_hash::FxHashSet as HashSet;
 use serde::{Deserialize, Serialize};
@@ -21,6 +22,7 @@ pub struct GoClient {
     pub id: String,
     pub upstream: usize,
     pub istail: bool,
+    pub workload: Workload,
     pub deps: HashMap<K, VC>,
     pub writes: HashMap<K, V>,
     pub input: String,

@@ -24,6 +24,7 @@ hz-causal = {path = "../causal"}
 hz-ipc = {path = "../ipc"}
 hz-config = {path = "../config"}
 hz-redis = {path = "../redis"}
+hz-workload = {path = "../workload"}
 
 [dependencies.uuid]
 version = "1.0.0-alpha.1"
