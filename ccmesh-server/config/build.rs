@@ -50,7 +50,7 @@ pub const PEERS: [&str; {}] = {:?};
 pub const NIGHTCORES: [&str; {}] = {:?};
 pub const MAXKEY: i32 = {};
 pub const REDISIP: &str = {:?};
-pub const GATEWAY: &str = {:?};",
+pub const GATEWAY: &str = {:?}:8080;",
         MODE,
         n_peers,
         config.NLAMBDA,
