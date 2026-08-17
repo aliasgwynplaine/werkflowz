@@ -21,6 +21,7 @@ tracing-subscriber.workspace = true
 rustc-hash.workspace = true
 hz-config = { path = "../config" }
 hz-mesh = { path = "../ccmesh" }
+ccmesg = { path = "../ccmesg" }
 hz-cb = { path = "../cb" }
 hz-causal = { path = "../causal" }
 hz-workload = { path = "../workload" }

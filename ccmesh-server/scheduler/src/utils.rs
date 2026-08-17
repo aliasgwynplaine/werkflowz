@@ -57,6 +57,25 @@ lazy_static! {
         }
         res
     };
+    static ref WORKLOADS2103: Vec<Workload> = {
+        let mut res = vec![];
+        let mut builder = WorkloadBuilder::default()
+            .num_read(2)
+            .num_write(1)
+            .num_migrate(0)
+            .num_fanout(3)
+            .uniform();
+
+        for _ in 0..1000000 {
+            res.push(builder.build());
+        }
+
+        res
+    };
+}
+
+pub fn get_2103() -> Workload {
+    WORKLOADS2103[rand::random::<usize>() % WORKLOADS2103.len()].clone()
 }
 
 pub fn get_01() -> Workload {

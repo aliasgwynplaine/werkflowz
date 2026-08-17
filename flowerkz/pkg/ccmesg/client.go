@@ -26,11 +26,12 @@ var SNITCH_PORT = "46655"
 var RPCC *MeshClient = nil
 
 type Envelope struct {
-	Tid     string            `json:"tid"`
-	Fname   string            `json:"fname"`
-	Payload string            `json:"payload"`
-	Deps    map[string]VC     `json:"deps"`
-	Writes  map[string]string `json:"writes"`
+	Tid      string                   `json:"tid"`
+	Fname    string                   `json:"fname"`
+	Payload  string                   `json:"payload"`
+	Deps     map[string]VC            `json:"deps"`
+	Writes   map[string]string        `json:"writes"`
+	Workload []map[string]interface{} `json:"workload"`
 }
 
 type MeshGoClient struct {
@@ -45,10 +46,11 @@ type MeshGoClient struct {
 	Delivered []Envelope
 	interChan chan struct{}
 	/* causalmesh tcc */
-	Writes map[string]string `json:"writes"`
-	Deps   map[string]VC     `json:"deps"`
-	Input  string            `json:"input"`
-	Abort  bool              `json:"abort"`
+	Workload []map[string]interface{} `json:"workload"`
+	Writes   map[string]string        `json:"writes"`
+	Deps     map[string]VC            `json:"deps"`
+	Input    string                   `json:"input"`
+	Abort    bool                     `json:"abort"`
 }
 
 func (c *MeshGoClient) SendMessage(to string, v string) error {
@@ -58,11 +60,12 @@ func (c *MeshGoClient) SendMessage(to string, v string) error {
 
 	invokeurl := "http://" + addr + "/function/" + to
 	message := Envelope{
-		Tid:     c.Tid,
-		Fname:   c.Fname,
-		Payload: v,
-		Deps:    c.Deps,
-		Writes:  c.Writes,
+		Tid:      c.Tid,
+		Fname:    c.Fname,
+		Payload:  v,
+		Deps:     c.Deps,
+		Writes:   c.Writes,
+		Workload: c.Workload,
 	}
 	data, err := json.Marshal(message)
 	CHECK(err)
@@ -84,6 +87,9 @@ func (c *MeshGoClient) SendMessage(to string, v string) error {
 }
 
 func getAddr(tid string, to string) (string, error) {
+	if tid == "" {
+		return NIGHTCORE_GW_ADDR + ":8080", nil
+	}
 	conn, err := net.Dial("tcp", NIGHTCORE_GW_ADDR+":"+SNITCH_PORT)
 
 	if err != nil {
@@ -131,6 +137,7 @@ func (c *MeshGoClient) WaitForMessages(fromlist []string) error {
 
 	fmt.Println("received: ", received)
 
+outer:
 	for {
 		fmt.Println("lock")
 		c.mu.Lock()
@@ -157,12 +164,16 @@ func (c *MeshGoClient) WaitForMessages(fromlist []string) error {
 
 			if out {
 				fmt.Println("All messages received !")
-				return nil
+				break outer
 			}
 		}
 		fmt.Println("Unlock")
 		c.mu.Unlock()
 	}
+
+	c.mu.Unlock()
+
+	return nil
 }
 
 func (c *MeshGoClient) listenIncommingMessages() {
@@ -312,68 +323,6 @@ func (client *MeshGoClient) Write(k string, v string) {
 	}
 }
 
-/*
-func (client *MeshGoClient) Write(k string, v string) {
-	//start := time.Now()
-	depsStr, err := json.Marshal(client.Deps)
-	CHECK(err)
-	localStr, err := json.Marshal(client.Local)
-	CHECK(err)
-	fmt.Println("Deps", client.Deps)
-	fmt.Println("deps", depsStr)
-	fmt.Println("Local", client.Local)
-	fmt.Println("local", localStr)
-	res, err := (*client.Rpcc).ClientWrite(context.Background(), &ClientWriteRequest{Key: k, Value: v, Deps: string(depsStr), Local: string(localStr)})
-	CHECK(err)
-	var vc VC
-	err = json.Unmarshal([]byte(res.Vc), &vc)
-	CHECK(err)
-	deps := make(map[string]VC)
-	for k, vc := range client.Deps {
-		deps[k] = vc
-	}
-	for k, m := range client.Local {
-		deps[k] = m.Vc
-	}
-	InsertOrMergeMeta(&client.Local, k, &Meta{Key: k, Value: v, Vc: vc, Deps: deps})
-	//fmt.Println("write", k, " time:", time.Since(start))
-}
-*/
-
-/*
-func (client *MeshGoClient) Execute() []byte {
-	if client.Local == nil || client.Deps == nil {
-		panic("client not init")
-	}
-	//fmt.Println(client.Workload)
-	abort := false
-	for _, op := range client.Workload {
-		if len(op) != 1 {
-			panic("op is not 1")
-		}
-		for k, v := range op {
-			switch k {
-			case "R":
-				//start := time.Now()
-				res := client.Read(v.(string))
-				if res == "None" {
-					abort = true
-					break
-				}
-				//fmt.Println("read time:", time.Since(start))
-			case "W":
-				//start := time.Now()
-				vs := v.([]interface{})
-				client.Write(vs[0].(string), vs[1].(string))
-				//fmt.Println("write time:", time.Since(start))
-			}
-		}
-	}
-	client.Abort = abort
-	return nil
-}
-*/
-
 func CreateClient() *MeshClient {
 	conn, err := grpc.Dial(ADDR, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	CHECK(err)
@@ -445,30 +394,118 @@ func (c *MeshGoClient) OpenEnvelope(envelope Envelope) {
 	c.Deps = envelope.Deps
 	fmt.Println("Writes: ", envelope.Writes)
 	c.Writes = envelope.Writes
+	c.Workload = envelope.Workload
 	c.Delivered = append(c.Delivered, envelope) // maybe too much data
 	c.mu.Unlock()
 }
 
-/*
 func Run(input []byte) []byte {
-	var client MeshGoClient
-	err := json.Unmarshal(input, &client)
+	var envelope Envelope
+	err := json.Unmarshal(input, &envelope)
 	CHECK(err)
 	//conn, err := grpc.Dial(ADDR, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	//CHECK(err)
 	//
 	//rpcc := NewMeshClient(conn)
+	var client MeshGoClient
 	InitClient()
 	client.Rpcc = RPCC
 
+	client.OpenEnvelope(envelope)
 	client.Execute()
 	CHECK(err)
-	clientStr, err := json.Marshal(client)
+	envelopeStr, err := json.Marshal(envelope)
 	CHECK(err)
 	//fmt.Println(string(clientStr))
-	return clientStr
+	return envelopeStr
 }
-*/
+
+func (client *MeshGoClient) Execute() []byte {
+	if client.Writes == nil || client.Deps == nil {
+		panic("client not init")
+	}
+	//fmt.Println(client.Workload)
+	workload := client.Workload
+	abort := false
+outer:
+	for i := 0; i < len(workload); i++ {
+		op := workload[i]
+
+		if len(op) != 1 {
+			panic("op is not 1")
+		}
+
+		for k, v := range op {
+			switch k {
+			case "R":
+				//start := time.Now()
+				res := client.Read(v.(string))
+				if res == "None" {
+					abort = true
+					break outer
+				}
+				//fmt.Println("read time:", time.Since(start))
+			case "W":
+				//start := time.Now()
+				vs := v.([]interface{})
+				client.Write(vs[0].(string), vs[1].(string))
+				//fmt.Println("write time:", time.Since(start))
+			case "O":
+				// handle fanout
+				client.InitTxn()
+				grado := v.(int)
+				payload := make([][]map[string]interface{}, grado)
+
+				for nb := 0; nb < grado; i++ {
+					nextop := workload[i]
+
+					if len(nextop) != 1 {
+						panic("len is not 1 uu")
+					}
+
+					ready := false
+
+					for kk, _ := range nextop {
+						payload[nb] = append(payload[nb], nextop)
+
+						if kk == "J" {
+							ready = true
+						}
+					}
+
+					if ready {
+						nb++
+					}
+				}
+
+				for nb := 0; nb < grado; nb++ {
+					payload[nb] = append(payload[nb], workload[i:]...)
+					client.Workload = payload[nb]
+					client.SendMessage("Entry", fmt.Sprintf("fux_%d", i))
+				}
+			case "J":
+				// prepare workload
+				client.Workload = client.Workload[i:]
+				client.SendMessage("Entry1", client.Fname)
+			case "I":
+				// handle fanin
+				client.InitMailBoxService()
+				var fromlist []string
+
+				for i := 0; i < v.(int); i++ {
+					fromlist = append(fromlist, fmt.Sprintf("fux_%d", i))
+				}
+
+				client.WaitForMessages(fromlist)
+			case "C":
+				client.CommitTxn()
+			}
+
+		}
+	}
+	client.Abort = abort
+	return nil
+}
 
 func Test() string {
 	conn, err := grpc.Dial(ADDR, grpc.WithTransportCredentials(insecure.NewCredentials()))

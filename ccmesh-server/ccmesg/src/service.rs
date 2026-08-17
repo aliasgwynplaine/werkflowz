@@ -52,12 +52,6 @@ pub struct CCMeshService {
     pub redis: Sender<M>,
 }
 
-async fn proxy(receiver: flume::Receiver<ServerWriteRequest>) {
-    while let Ok(req) = receiver.recv() {
-        rpc_client().server_write(req).await.unwrap();
-    }
-}
-
 impl CCMeshService {
     pub fn new(id: usize) -> Self {
         let mut white = White::default();
@@ -70,7 +64,7 @@ impl CCMeshService {
                 let value = format!("{:0>8}", i);
                 let m: M = M::new(key, value);
                 if MV {
-                    let mut buf = AllocRingBuffer::with_capacity(MV_SIZE);
+                    let mut buf = AllocRingBuffer::new(MV_SIZE);
                     buf.push(m);
                     white2.insert(format!("{}", i), buf);
                 } else {
@@ -81,7 +75,7 @@ impl CCMeshService {
         }
 
         // let (sender, mut receiver) = mpsc::channel(1000);
-        let (sender, mut receiver) = flume::unbounded();
+        let (sender, receiver) = flume::unbounded();
         tokio::spawn(async move {
             // let mut client: RPCClient = loop {
             //     let next_ip = PEERS[(id + 1) % T];
@@ -102,7 +96,7 @@ impl CCMeshService {
             }
         });
 
-        let (sendercc, mut receivercc) = flume::unbounded();
+        let (sendercc, receivercc) = flume::unbounded();
         tokio::spawn(async move {
             while let Ok(req) = receivercc.recv_async().await {
                 rpc_client().server_commit_txn(req).await.unwrap();

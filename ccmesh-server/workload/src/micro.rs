@@ -7,7 +7,8 @@ pub enum Op {
     R(String),
     W(String, String),
     M,
-    I,
+    J(i32),
+    I(i32),
     O(i32),
     C,
 }
@@ -102,6 +103,7 @@ impl WorkloadBuilder {
 
         if self.delay_writes {
             ops.shuffle(&mut self.rng);
+
             for _ in 0..self.nw {
                 ops.push(Op::W(self.sample(), format!("{:0>8}", self.sample())));
             }
@@ -131,12 +133,13 @@ impl WorkloadBuilder {
                 }
 
                 tmp.shuffle(&mut self.rng);
-                tmp.push(Op::I);
+                tmp.push(Op::J(self.no));
                 ops.append(&mut tmp);
             }
 
             // we could add something here but later :P
 
+            ops.push(Op::I(self.no));
             ops.push(Op::C);
         }
 
