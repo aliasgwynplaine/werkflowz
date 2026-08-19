@@ -312,12 +312,12 @@ impl CCMeshService {
              Note that the VC i taken from the meta m.
              */
             if let Some(m) = m {
-                info!("[{:?}] on the tail! merging", self.id);
+               // info!("[{:?}] on the tail! merging", self.id);
                 let buf = white2.get_mut(&k).unwrap();
                 let new_m = m.merge(buf.back().unwrap());
                 buf.push(new_m);
 
-                info!("[{:?}] merged!", self.id);
+                //info!("[{:?}] merged!", self.id);
                 /*
                 this is for arbitrary key tests. Maybe you will use it later 
                 match white2.get_mut(&k) {
@@ -346,12 +346,12 @@ impl CCMeshService {
                 if let Some(vc_in_deps) = vc_in_deps {
                     for m in buf.iter() {
                         if m.vc == *vc_in_deps {
-                            info!("[{:?}] exact vc in deps!", self.id);
+                            //info!("[{:?}] exact vc in deps!", self.id);
                             return Some(m.clone());
                         }
                     }
 
-                    info!("[{:?}] version not found uu", self.id);
+                    //info!("[{:?}] version not found uu", self.id);
                     return None;
                 } else {
                     /*
@@ -377,12 +377,12 @@ impl CCMeshService {
                         }
 
                         if valid {
-                            info!("[{:?}] valid!", self.id);
+                            //info!("[{:?}] valid!", self.id);
                             return Some(m.clone());
                         }
                     }
 
-                    info!("[{:?}] not valid uu", self.id);
+                    //info!("[{:?}] not valid uu", self.id);
                     return None;
                 }
             }
@@ -460,16 +460,16 @@ impl Mesh for CCMeshService {
         // let deps: HashMap<String, VC> = serde_json::from_slice(&req.deps).unwrap();
         let deps: HashMap<String, VC> = serde_json::from_str(&req.deps).unwrap();
         {
-            info!("[{:?}] client_read {} (before) {:?}:", self.id, k.clone(), self.vc.lock().unwrap().clone());
+            //info!("[{:?}] client_read {} (before) {:?}:", self.id, k.clone(), self.vc.lock().unwrap().clone());
         }
-        self.print_cache();
+        //self.print_cache();
         let res = self.pull_deps2(&deps, k.clone(), None);
         // let res = self.white.lock().unwrap().get(&k).unwrap().clone();
         // assert!(res.deps.is_empty());
         {
-            info!("[{:?}] client_read {} (after): {:?}", self.id, k.clone(), self.vc.lock().unwrap().clone());
+            //info!("[{:?}] client_read {} (after): {:?}", self.id, k.clone(), self.vc.lock().unwrap().clone());
         }
-        self.print_cache();
+        //self.print_cache();
 
         if res.is_none() {
             return Ok(Response::new(ClientReadResponse {
@@ -502,7 +502,7 @@ impl Mesh for CCMeshService {
         let writes: HashMap<K, V> = serde_json::from_str(&req.writes).unwrap();
 
         {
-            info!("[{:?}] client_commit recalculating VC", self.id);
+            //info!("[{:?}] client_commit recalculating VC", self.id);
             let mut vc = self.vc.lock().unwrap();
             
             for (_, dvc) in deps.iter() {
@@ -511,14 +511,14 @@ impl Mesh for CCMeshService {
 
             vc.increment(self.id);
             res = vc.clone();
-            info!("[{:?}] VC: {:?}", self.id, vc.clone());
+            //info!("[{:?}] VC: {:?}", self.id, vc.clone());
         }
         //for (k, _) in writes.iter() {
         //    deps.insert_or_merge(k.clone(), res.clone());
         //}
 
         {
-            info!("[{:?}] client_commit adding to black", self.id);
+            //info!("[{:?}] client_commit adding to black", self.id);
             let mut blk = self.black.lock().unwrap();
 
             for (k, v) in writes.iter() {
@@ -540,7 +540,7 @@ impl Mesh for CCMeshService {
             }
         }
 
-        info!("[{:?}] client_commit_txn {}", self.id, req.writes);
+        //info!("[{:?}] client_commit_txn {}", self.id, req.writes);
 
         if DURABLE {
             for (k, v) in writes.iter() {
@@ -556,7 +556,7 @@ impl Mesh for CCMeshService {
         }
 
 
-        self.print_cache();
+        //self.print_cache();
 
         let next_req = ServerCommitTxnRequest {
             writes: req.writes,
@@ -581,7 +581,7 @@ impl Mesh for CCMeshService {
         let mut req = request.into_inner();
         let writes: HashMap<K, V> = serde_json::from_str(&req.writes).unwrap();
 
-        info!("[{:?}] server_commit_txn. writes: {} round: {}", self.id, req.writes, req.round.clone());
+        //info!("[{:?}] server_commit_txn. writes: {} round: {}", self.id, req.writes, req.round.clone());
 
         if req.round == 3 {
             if req.headid != ((self.id + 1) % T) as u32 {
@@ -590,18 +590,18 @@ impl Mesh for CCMeshService {
                 integrate the write
                 */
                 let req_vc : VC = serde_json::from_str(&req.vc).unwrap();
-                info!("[{:?}] integration phase! vc: {:?} req_vc: {:?}",
-                    self.id, self.vc.lock().unwrap().clone(), req_vc.clone());
+                //info!("[{:?}] integration phase! vc: {:?} req_vc: {:?}",
+                //    self.id, self.vc.lock().unwrap().clone(), req_vc.clone());
 
                 for (kk, _) in writes.iter() {
-                    info!("[{:?}] integrating {:?}", self.id, kk.clone());
+                    //info!("[{:?}] integrating {:?}", self.id, kk.clone());
                     let mut fk_deps = HashMap::default();
                     fk_deps.insert(kk.clone(), req_vc.clone());
                     self.pull_deps2(&fk_deps, kk.clone(), None);
                 }
 
-                info!("[{:?}] server_commit_txn FINISHED! writes: {:?}", self.id, writes);
-                self.print_cache();
+                //info!("[{:?}] server_commit_txn FINISHED! writes: {:?}", self.id, writes);
+                //self.print_cache();
                 self.nextcc.send(req).unwrap();
 
                 return Ok(Response::new(()));
@@ -611,7 +611,7 @@ impl Mesh for CCMeshService {
         }
 
         if req.headid != ((self.id + 1) % T) as u32 && req.round == 1 {
-            info!("[{:?}] FIRST TIME! Adding to black", self.id);
+            //info!("[{:?}] FIRST TIME! Adding to black", self.id);
             let vc: VC = serde_json::from_str(&req.vc).unwrap();
             let deps: HashMap<K, VC> = serde_json::from_str(&req.deps).unwrap();
 
@@ -619,7 +619,7 @@ impl Mesh for CCMeshService {
                 let mut mg = self.black.lock().unwrap();
 
                 for (k, v) in writes.iter() {
-                    info!("[{:?}] adding k: {} ,v: {}, vc: {:?}", self.id, k, v, vc.clone());
+                    //info!("[{:?}] adding k: {} ,v: {}, vc: {:?}", self.id, k, v, vc.clone());
                     let m: Meta<String, String, DenseVC<3>> = M {
                         key: k.clone(),
                         value: v.clone(),
@@ -629,36 +629,36 @@ impl Mesh for CCMeshService {
                     
                     match mg.entry(k.clone()) {
                         Entry::Vacant(e) => {
-                            info!("[{:?}] vacant. inserting", self.id);
+                            //info!("[{:?}] vacant. inserting", self.id);
                             e.insert(vec![m]);
                         }
                         Entry::Occupied(mut e) => {
-                            info!("[{:?}] occupied. pushing", self.id);
-                            info!("[{:?}] avant push: e -> {:?}", self.id, e);
+                            //info!("[{:?}] occupied. pushing", self.id);
+                            //info!("[{:?}] avant push: e -> {:?}", self.id, e);
                             e.get_mut().push(m);
-                            info!("[{:?}] result: e -> {:?}", self.id, e);
+                            //info!("[{:?}] result: e -> {:?}", self.id, e);
                         }
                     }
                 }
             }
 
-            info!("[{:?}] writes added to the black and sending", self.id);
-            self.print_cache();
+            //info!("[{:?}] writes added to the black and sending", self.id);
+            //self.print_cache();
             self.nextcc.send(req).unwrap();
 
             return Ok(Response::new(()));
         }
 
         if req.headid != ((self.id + 1) % T) as u32 {
-            info!("[{:?}] simple fwd. writes: {:?}", self.id, writes);
-            self.print_cache();
+            //info!("[{:?}] simple fwd. writes: {:?}", self.id, writes);
+            //self.print_cache();
             self.nextcc.send(req).unwrap();
             return Ok(Response::new(()));
         }
 
         if req.headid == ((self.id + 1) %T) as u32 && req.round == 1 {
-            info!("[{:?}] about start round 2. writes: {:?}", self.id, writes);
-            self.print_cache();
+            //info!("[{:?}] about start round 2. writes: {:?}", self.id, writes);
+            //self.print_cache();
             req.round = 2;
             self.nextcc.send(req).unwrap();
             return Ok(Response::new(()));
@@ -675,7 +675,7 @@ impl Mesh for CCMeshService {
             res_vc = vc.clone();
         }
 
-        info!("[{:?}] we're on the tail now. writes: {:?} vc: {:?}", self.id, writes, res_vc.clone());
+        //info!("[{:?}] we're on the tail now. writes: {:?} vc: {:?}", self.id, writes, res_vc.clone());
         /* 
         According to the paper, all the write will share 
         the dependency set. Right now, i will just iterate 
@@ -698,9 +698,9 @@ impl Mesh for CCMeshService {
         
         req.round = 3;
         req.vc = serde_json::to_string(&res_vc).unwrap();
-        info!("[{:?}] server_commit_end. writes: {:?} starting round {}", self.id, writes, req.round.clone());
+        //info!("[{:?}] server_commit_end. writes: {:?} starting round {}", self.id, writes, req.round.clone());
         self.nextcc.send(req).unwrap();
-        self.print_cache();
+        //self.print_cache();
         
         Ok(Response::new(()))
     }
@@ -758,8 +758,8 @@ impl Mesh for CCMeshService {
         let mut deps: HashMap<String, VC> = serde_json::from_str(&req.deps).unwrap();
         let local: HashMap<K, M> = serde_json::from_str(&req.local).unwrap();
 
-        info!("client_write {} before:", key);
-        self.print_cache();
+        //info!("client_write {} before:", key);
+        //self.print_cache();
 
         for (k, m) in local.iter() {
             deps.insert_or_merge(k.clone(), m.vc.clone());
@@ -828,8 +828,8 @@ impl Mesh for CCMeshService {
         // conn.write_frame_and_flush(&m.no_deps()).await.unwrap();
         // send to neighbor
         // let start = std::time::Instant::now();
-        info!("client_write after:");
-        self.print_cache();
+        //info!("client_write after:");
+        //self.print_cache();
 
         let next_req = ServerWriteRequest {
             key,
@@ -855,8 +855,8 @@ impl Mesh for CCMeshService {
         &self,
         request: Request<ServerWriteRequest>,
     ) -> Result<Response<()>, Status> {
-        info!("server_write before:");
-        self.print_cache();
+        //info!("server_write before:");
+        //self.print_cache();
         let mut req: ServerWriteRequest = request.into_inner();
 
         if req.headid != ((self.id + 1) % T) as u32 && req.round == 1 {
@@ -905,7 +905,7 @@ impl Mesh for CCMeshService {
             res_vc = vc.clone();
         }
 
-        info!("pulling deps...");
+        //info!("pulling deps...");
         self.pull_deps2(
             &req_deps,
             req.key.clone(),
@@ -917,8 +917,8 @@ impl Mesh for CCMeshService {
             }),
         );
 
-        info!("server_write after:");
-        self.print_cache();
+        //info!("server_write after:");
+        //self.print_cache();
         Ok(Response::new(()))
     }
 
@@ -950,7 +950,7 @@ impl Mesh for CCMeshService {
 
 pub async fn run(id: usize) {
     let ccmesh_service = CCMeshService::new(id);
-    info!("[{:?}] MODE: {:?}", id, MODE);
+    //info!("[{:?}] MODE: {:?}", id, MODE);
 
     Server::builder()
         .add_service(MeshServer::new(ccmesh_service))

@@ -48,8 +48,8 @@ async fn resolve(snitch: &Snitch, tid: &str, fid: &str) -> Addr {
         Vacant(entry) => {
             println!("fid {fid} channel not found. Creating channel");
             let (sx, _) = watch::channel(None);
-            entry.insert(sx);
-            return snitch.default_addr.clone();
+            entry.insert(sx).subscribe()
+            //return snitch.default_addr.clone();
         }
     };
 

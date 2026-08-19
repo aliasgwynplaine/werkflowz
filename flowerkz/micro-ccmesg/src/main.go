@@ -22,6 +22,8 @@ func (f *funcHandlerFactory) New(env types.Environment, funcName string) (types.
 		return &Handler{env: env}, nil
 	} else if funcName == "Entry2" {
 		return &Handler{env: env}, nil
+	} else if funcName == "Sink" {
+		return &Handler{env: env}, nil
 	} else {
 		return nil, nil
 	}

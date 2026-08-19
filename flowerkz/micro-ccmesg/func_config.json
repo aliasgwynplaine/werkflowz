@@ -10,5 +10,11 @@
     "funcId": 2,
     "minWorkers": 2,
     "maxWorkers": 4
+  },
+  {
+    "funcName": "Sink",
+    "funcId": 3,
+    "minWorkers": 2,
+    "maxWorkers": 4
   }
 ]

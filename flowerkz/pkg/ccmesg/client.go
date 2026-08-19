@@ -12,6 +12,7 @@ import (
 
 	. "ccmeshclient/pkg/common"
 
+	"math/rand/v2"
 	"os"
 	"strconv"
 
@@ -24,6 +25,8 @@ var NIGHTCORE_GW_ADDR = os.Getenv("NIGHTCORE_GW_ADDR")
 var SNITCH_PORT = "46655"
 
 var RPCC *MeshClient = nil
+
+var server *http.Server
 
 type Envelope struct {
 	Tid      string                   `json:"tid"`
@@ -53,9 +56,9 @@ type MeshGoClient struct {
 	Abort    bool                     `json:"abort"`
 }
 
-func (c *MeshGoClient) SendMessage(to string, v string) error {
+func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 	fmt.Println("asking for ", to)
-	addr, err := getAddr(c.Tid, to)
+	addr, err := getAddr(c.Tid, to, direct)
 	CHECK(err)
 
 	invokeurl := "http://" + addr + "/function/" + to
@@ -71,23 +74,23 @@ func (c *MeshGoClient) SendMessage(to string, v string) error {
 	CHECK(err)
 	output := bytes.NewBuffer(data)
 	fmt.Println("Sending request to: ", invokeurl)
-	//go func() {
+	go func() {
 	response, err := http.Post(invokeurl, "*/*", output) // invokation
 
 	if err != nil {
-		return err
+		return
 	}
 
 	fmt.Println("response: ", response)
-	//}()
+	}()
 
 	fmt.Println("Message sent to ", to, " for txn ", c.Tid, "through ", invokeurl)
 
 	return nil
 }
 
-func getAddr(tid string, to string) (string, error) {
-	if tid == "" {
+func getAddr(tid string, to string, direct bool) (string, error) {
+	if tid == "" || direct {
 		return NIGHTCORE_GW_ADDR + ":8080", nil
 	}
 	conn, err := net.Dial("tcp", NIGHTCORE_GW_ADDR+":"+SNITCH_PORT)
@@ -136,15 +139,16 @@ func (c *MeshGoClient) WaitForMessages(fromlist []string) error {
 	}
 
 	fmt.Println("received: ", received)
+	timeout := time.After(1 * time.Second)
 
 outer:
 	for {
-		fmt.Println("lock")
+		//fmt.Println("lock")
 		c.mu.Lock()
-		fmt.Println(received)
+		//fmt.Println(received)
 		for _, e := range c.Delivered {
 			if received[e.Fname] {
-				fmt.Println("already received from ", e.Fname)
+				//fmt.Println("already received from ", e.Fname)
 				continue
 			}
 
@@ -167,8 +171,24 @@ outer:
 				break outer
 			}
 		}
-		fmt.Println("Unlock")
+		//fmt.Println("Unlock")
 		c.mu.Unlock()
+
+		select {
+			case <-timeout:
+				fmt.Println("Timeout!")
+				c.Abort = true
+				break
+			default:
+				/* empty */
+		}
+	}
+
+	if server != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+		defer cancel()
+		server.Shutdown(ctx)
+		server = nil
 	}
 
 	c.mu.Unlock()
@@ -187,7 +207,8 @@ func (c *MeshGoClient) listenIncommingMessages() {
 	fmt.Println("going into the listening loop with addr ", caddr)
 	fmt.Printf("endpoint: /function/%s\n", c.Fname)
 
-	http.Handle("/function/"+c.Fname, http.HandlerFunc(
+	mux := http.NewServeMux()
+	mux.HandleFunc("/function/"+c.Fname, http.HandlerFunc(
 		func(rw http.ResponseWriter, r *http.Request) {
 			fmt.Println("message received!!!!")
 			decoder := json.NewDecoder(r.Body)
@@ -202,11 +223,20 @@ func (c *MeshGoClient) listenIncommingMessages() {
 		},
 	))
 
+	server = &http.Server {
+		Handler: mux,
+	}
+
 	fmt.Println("deploying the http.")
-	go func() {
-		err = http.Serve(ln, nil)
-		CHECK(err)
-	}()
+	go func(s *http.Server) {
+		//err = http.Serve(ln, nil)
+		//CHECK(err)
+		err := s.Serve(ln)
+
+		if err != nil {
+			fmt.Println("uu - ", err)
+		}
+	}(server)
 
 	fmt.Println("MailBoxService online!")
 	c.subscribe(caddr)
@@ -253,8 +283,10 @@ func (c *MeshGoClient) deliver(envelope Envelope) {
 	}
 
 	for k, v := range envelope.Writes {
-		if _, ok := c.Writes[k]; ok {
-			panic("Operation not permited: concurrent write in txn.") // maybe return error to the sender
+		if vv, ok := c.Writes[k]; ok {
+			if v != vv {
+				panic("Operation not permited: concurrent write in txn.")
+			}
 		}
 
 		fmt.Println("merging ", k, ": ", v)
@@ -400,6 +432,8 @@ func (c *MeshGoClient) OpenEnvelope(envelope Envelope) {
 }
 
 func Run(input []byte) []byte {
+	fmt.Println("input: ", input)
+	fmt.Println("inputstr: ", string(input))
 	var envelope Envelope
 	err := json.Unmarshal(input, &envelope)
 	CHECK(err)
@@ -407,9 +441,11 @@ func Run(input []byte) []byte {
 	//CHECK(err)
 	//
 	//rpcc := NewMeshClient(conn)
-	var client MeshGoClient
-	InitClient()
-	client.Rpcc = RPCC
+	//var client MeshGoClient
+	//InitClient()
+	//client.Rpcc = RPCC
+	client := NewMeshGoClient(envelope.Payload)
+	InitRPCClient(client)
 
 	client.OpenEnvelope(envelope)
 	client.Execute()
@@ -438,6 +474,7 @@ outer:
 		for k, v := range op {
 			switch k {
 			case "R":
+				fmt.Println("READ")
 				//start := time.Now()
 				res := client.Read(v.(string))
 				if res == "None" {
@@ -446,15 +483,18 @@ outer:
 				}
 				//fmt.Println("read time:", time.Since(start))
 			case "W":
+				fmt.Println("WRITE")
 				//start := time.Now()
 				vs := v.([]interface{})
 				client.Write(vs[0].(string), vs[1].(string))
 				//fmt.Println("write time:", time.Since(start))
 			case "O":
+				fmt.Println("FANOUT")
 				// handle fanout
 				client.InitTxn()
-				grado := v.(int)
+				grado := int(v.(float64))
 				payload := make([][]map[string]interface{}, grado)
+				i++
 
 				for nb := 0; nb < grado; i++ {
 					nextop := workload[i]
@@ -465,7 +505,7 @@ outer:
 
 					ready := false
 
-					for kk, _ := range nextop {
+					for kk, _ := range nextop { // this is not a loop
 						payload[nb] = append(payload[nb], nextop)
 
 						if kk == "J" {
@@ -478,21 +518,33 @@ outer:
 					}
 				}
 
+				fmt.Println("WoRKLOADDDDD:::: -> ", workload[i:])
+
 				for nb := 0; nb < grado; nb++ {
 					payload[nb] = append(payload[nb], workload[i:]...)
 					client.Workload = payload[nb]
-					client.SendMessage("Entry", fmt.Sprintf("fux_%d", i))
+					if rand.IntN(2) == 1 {
+						client.SendMessage("Entry1", fmt.Sprintf("fux_%d", nb), true)
+						
+					} else {
+						client.SendMessage("Entry2", fmt.Sprintf("fux_%d", nb), true)
+					}
 				}
+				return nil
 			case "J":
+				fmt.Println("JOIN")
 				// prepare workload
+				i++
 				client.Workload = client.Workload[i:]
-				client.SendMessage("Entry1", client.Fname)
+				client.SendMessage("Sink", "Sink", false)
+				return nil
 			case "I":
+				fmt.Println("FANIN")
 				// handle fanin
 				client.InitMailBoxService()
 				var fromlist []string
 
-				for i := 0; i < v.(int); i++ {
+				for i := 0; i < int(v.(float64)); i++ {
 					fromlist = append(fromlist, fmt.Sprintf("fux_%d", i))
 				}
 

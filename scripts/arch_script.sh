@@ -14,8 +14,9 @@ key_file=$3
 mapfile -t vms < "/tmp/deploynodes.${OAR_JOBID}"
 echo "${vms[0]}" > redis.${OAR_JOBID}
 echo "${vms[1]}" > gateway.${OAR_JOBID}
+echo "${vms[2]}" > scheduler.${OAR_JOBID}
 
-for wrkr in "${vms[@]:2}"; do
+for wrkr in "${vms[@]:3}"; do
 	echo "$wrkr" >> workers.${OAR_JOBID}
 done
 
@@ -23,6 +24,6 @@ cp /tmp/deploynodes.${OAR_JOBID} .
 
 kadeploy3 -f redis.${OAR_JOBID} --env-file ${db_env_file} -k ${key_file} &
 kadeploy3 -f gateway.${OAR_JOBID} --env-file ${node_env_file} -k ${key_file} &
+kadeploy3 -f scheduler.${OAR_JOBID} --env-file ${node_env_file} -k ${key_file} &
 kadeploy3 -f workers.${OAR_JOBID} --env-file ${node_env_file} -k ${key_file} &
-
 

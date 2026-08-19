@@ -16,7 +16,7 @@ if ! nc -z $rhost 22; then
 	exit 2
 fi
 
-opts="-o StrictHostKeyChecking=no"
+opts="-e StrictHostKeyChecking=no"
 
 if [ -d "$fichier" ]; then
 	opts="$opts -r"

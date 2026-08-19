@@ -20,6 +20,11 @@ impl GoClient {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Envelope {
+    pub tid: String,
+    pub fname: String,
+    pub payload: String,
+    pub deps: HashMap<K, VC>,
+    pub writes: HashMap<K, V>,
     pub workload: Workload,
 }
 

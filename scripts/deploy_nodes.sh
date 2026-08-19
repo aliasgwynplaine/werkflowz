@@ -28,9 +28,9 @@ node_env_file=$(realpath $3)
 db_env_file=$(realpath $4)
 key_file=$(realpath $5)
 
-if [ $nb_nodes -lt 3 ]; then
-	echo "Cannot deploy the experiment with less than 3 nodes"
-	exit 3
+if [ $nb_nodes -lt 4 ]; then
+	echo "Cannot deploy the experiment with less than 4 nodes"
+	exit 4
 fi
 
 echo "KEY_FILE -> $key_file"

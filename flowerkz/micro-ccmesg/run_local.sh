@@ -40,6 +40,11 @@ $NIGHTCORE_ROOT/bin/$BUILD_TYPE/launcher \
     --fprocess=$BASE_DIR/main \
     --v=1 2>$BASE_DIR/outputs/launcher_Entry2.log &
 
+$NIGHTCORE_ROOT/bin/$BUILD_TYPE/launcher \
+    --func_id=2 --fprocess_mode=go \
+    --fprocess_output_dir=$BASE_DIR/outputs \
+    --fprocess=$BASE_DIR/main \
+    --v=1 2>$BASE_DIR/outputs/launcher_Sink.log &
 
 echo "Ready!"
 wait

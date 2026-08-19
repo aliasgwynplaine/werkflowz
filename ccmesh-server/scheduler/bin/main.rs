@@ -19,7 +19,7 @@ async fn service(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
     match MODE {
         "mesh" => mesh_service(_req).await,
         "cb" => cb_service(_req).await,
-        "mesg" => mesg_service(_req).await,
+        "ccmesg" => mesg_service(_req).await,
         _ => panic!("unknown mode"),
     }
 }
@@ -53,6 +53,7 @@ async fn main() {
     match MODE {
         "mesh" => {}
         "cb" => hz_cb::goclient::setup_clients(),
+        "ccmesg" => {},
         _ => panic!("unknown mode or not implemented"),
     }
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));

@@ -21,6 +21,7 @@ usage () {
 	echo "	ccmesh-redis-run <redis.host>"
 	echo "	ccmesh-server-build <workers.host>"
 	echo "	ccmesh-server-run <workers.host>"
+	echo "	run-scheduler <scheduler.host>"
 	echo "	hit <gateway.host> <func_name> <data>"
 	echo "	remote-kill <file.host> <procname>"
 	echo "	retrieve-logs <deploynodes.host> <experiment>"
@@ -37,6 +38,8 @@ show-experiments() {
 	echo "	3branch"
 	echo "	tccverifier"
 	echo "	tccverifier-ccmesh"
+	echo "  micro-ccmesh"
+	echo "  micro-ccmesg"
 	echo
 }
 
@@ -63,6 +66,12 @@ verify-experiment() {
 			return 0
 			;;
 		tccverifier-ccmesh)
+			return 0
+			;;
+		micro-ccmesh)
+			return 0
+			;;
+		micro-ccmesg)
 			return 0
 			;;
 		*)
@@ -278,6 +287,15 @@ ccmesh-server-run)
 
 	;;
 
+run-scheduler)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 1
+	fi
+
+	mapfile -t scheduler_server < $2
+	bash remote_exec.sh $scheduler_server ccmesh_scheduler_run.sh
+	;;
 hit)
 	if [ $# -lt 4 ]; then
 		usage
@@ -314,7 +332,8 @@ retrieve-logs)
 	mapfile -t deploynodes < $2
 	redishost=${deploynodes[0]}
 	gatewayhost=${deploynodes[1]}
-	workerhosts=${deploynodes[@]:2}
+	schedulerhost=${deploynodes[2]}
+	workerhosts=${deploynodes[@]:3}
 	experiment=$3
 
 	[ -d "logs" ] && rm -rf logs
@@ -323,6 +342,9 @@ retrieve-logs)
 	rsync root@$redishost:~/redis.log logs/redis.log
 
 	rsync root@$gatewayhost:~/flowerkz/$experiment/outputs/* logs/
+	rsync root@$gatewayhost:~/snitch.log logs/
+
+	rsync root@$schedulerhost:~/ccmesh_scheduler.log logs/scheduler.log
 
 	cmd="ls ~/flowerkz/$experiment/outputs/"
 
@@ -342,6 +364,7 @@ clean-all)
 	find . -type f -regex './gateway\.[0-9]+' -delete
 	find . -type f -regex './redis\.[0-9]+' -delete
 	find . -type f -regex './deploynodes\.[0-9]+' -delete
+	find . -type f -regex './scheduler\.[0-9]+' -delete
 	find . -type f -regex './OAR\.[0-9]+\.std*' -delete
 
 	echo "All clean"
