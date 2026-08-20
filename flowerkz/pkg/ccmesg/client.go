@@ -138,14 +138,11 @@ func (c *MeshGoClient) WaitForMessages(fromlist []string) error {
 		received[p] = false
 	}
 
-	fmt.Println("received: ", received)
 	timeout := time.After(1 * time.Second)
 
 outer:
 	for {
-		fmt.Println("lock")
 		c.mu.Lock()
-		fmt.Println(received)
 		for _, e := range c.Delivered {
 			if received[e.Fname] {
 				fmt.Println("already received from ", e.Fname)
@@ -171,12 +168,11 @@ outer:
 				break outer
 			}
 		}
-		fmt.Println("Unlock")
 		c.mu.Unlock()
 
 		select {
 		case <-timeout:
-			fmt.Println("Timeout!")
+			fmt.Println(c.Tid, " - Timeout!")
 			c.Abort = true
 			break
 		default:
@@ -184,7 +180,14 @@ outer:
 		}
 	}
 
+	if c.Abort {
+		fmt.Println(c.Tid, " aborted!")
+	} else {
+		fmt.Println(c.Tid, " ready to go!")
+	}
+
 	if c.server != nil {
+		fmt.Println(c.Tid, "- shutting down!")
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 		c.server.Shutdown(ctx)
@@ -234,11 +237,11 @@ func (c *MeshGoClient) listenIncommingMessages() {
 		err := s.Serve(ln)
 
 		if err != nil {
-			fmt.Println("uu - ", err)
+			fmt.Println(c.Tid, "- uu - ", err)
 		}
 	}(c.server)
 
-	fmt.Println("MailBoxService online!")
+	fmt.Println(c.Tid, " - MailBoxService online!")
 	c.subscribe(caddr)
 
 }
@@ -323,7 +326,7 @@ func (client *MeshGoClient) Read(k string) string {
 }
 
 func (client *MeshGoClient) CommitTxn() {
-	fmt.Println("Commit Txn ----", client.Deps, client.Writes)
+	fmt.Println(client.Tid, "- Commit Txn ----", client.Deps, client.Writes)
 	depsStr, err := json.Marshal(client.Deps)
 	CHECK(err)
 	writesStr, err := json.Marshal(client.Writes)
