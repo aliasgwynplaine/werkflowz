@@ -517,10 +517,10 @@ outer:
 					payload[nb] = append(payload[nb], workload[i:]...)
 					client.Workload = payload[nb]
 					if rand.IntN(2) == 1 {
-						client.SendMessage("Entry1", fmt.Sprintf("fux_%d", nb), true)
+						client.SendMessage(fmt.Sprintf("Entry1?t=%s", client.Tid), fmt.Sprintf("fux_%d", nb), true)
 
 					} else {
-						client.SendMessage("Entry2", fmt.Sprintf("fux_%d", nb), true)
+						client.SendMessage(fmt.Sprintf("Entry2?t=%s", client.Tid), fmt.Sprintf("fux_%d", nb), true)
 					}
 				}
 				return nil
