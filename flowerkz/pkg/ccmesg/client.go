@@ -84,7 +84,7 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 		fmt.Println("response: ", response)
 	}()
 
-	fmt.Println("Message sent to ", to, " for txn ", c.Tid, "through ", invokeurl)
+	fmt.Println("Message sent to ", to, " for txn ", c.Tid, "through ", invokeurl, " - ", v)
 
 	return nil
 }
