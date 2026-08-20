@@ -75,12 +75,16 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 	output := bytes.NewBuffer(data)
 	fmt.Println(c.Fname, "- Sending request to: ", invokeurl)
 	go func() {
+		http.DefaultClient.Timeout = 1 * time.Second
+
 		response, err := http.Post(invokeurl, "*/*", output) // invokation
 
 		if err != nil {
 			fmt.Println(c.Tid, "- returning uu ", err)
 			return
 		}
+
+		defer response.Body.Close()
 
 		fmt.Println(c.Tid, "- response: ", response)
 	}()
