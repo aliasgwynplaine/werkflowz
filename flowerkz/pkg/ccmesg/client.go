@@ -164,6 +164,7 @@ outer:
 
 			if out {
 				fmt.Println(c.Tid, "- All messages received !")
+				c.mu.Unlock()
 				break outer
 			}
 		}
@@ -192,8 +193,6 @@ outer:
 		c.server.Shutdown(ctx)
 		c.server = nil
 	}
-
-	c.mu.Unlock()
 
 	return nil
 }
