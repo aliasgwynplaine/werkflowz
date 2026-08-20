@@ -78,10 +78,11 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 		response, err := http.Post(invokeurl, "*/*", output) // invokation
 
 		if err != nil {
+			fmt.Println(c.Tid, "- returning uu ", err)
 			return
 		}
 
-		fmt.Println("response: ", response)
+		fmt.Println(c.Tid, "- response: ", response)
 	}()
 
 	fmt.Println(c.Fname, "- Message sent to ", to, " for txn ", c.Tid, "through ", invokeurl, " - ", v)
