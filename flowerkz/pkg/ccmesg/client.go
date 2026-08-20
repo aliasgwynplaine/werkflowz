@@ -145,13 +145,12 @@ outer:
 		c.mu.Lock()
 		for _, e := range c.Delivered {
 			if received[e.Fname] {
-				fmt.Println("already received from ", e.Fname)
 				continue
 			}
 
 			for i := 0; i < len(fromlist); i++ {
 				if e.Fname == fromlist[i] {
-					fmt.Println("found msg from ", e.Fname)
+					fmt.Println(c.Tid, " - found msg from ", e.Fname)
 					received[e.Fname] = true
 					break
 				}
@@ -164,7 +163,7 @@ outer:
 			}
 
 			if out {
-				fmt.Println("All messages received !")
+				fmt.Println(c.Tid, "- All messages received !")
 				break outer
 			}
 		}
