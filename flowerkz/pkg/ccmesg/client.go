@@ -143,7 +143,8 @@ func (c *MeshGoClient) WaitForMessages(fromlist []string) error {
 		received[p] = false
 	}
 
-	timeout := time.After(1 * time.Second)
+	timeout := time.After(2 * time.Second)
+	var out bool
 
 outer:
 	for {
@@ -161,7 +162,7 @@ outer:
 				}
 			}
 
-			out := true
+			out = true
 
 			for _, r := range received {
 				out = r && out
@@ -178,7 +179,7 @@ outer:
 		select {
 		case <-timeout:
 			fmt.Println(c.Tid, " - Timeout! -", received)
-			c.Abort = true
+			c.Abort = !out
 			break outer
 		default:
 			/* empty */
