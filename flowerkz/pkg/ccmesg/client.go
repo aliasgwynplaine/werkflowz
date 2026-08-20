@@ -57,7 +57,7 @@ type MeshGoClient struct {
 }
 
 func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
-	fmt.Println("asking for ", to)
+	fmt.Println(c.Fname, "- asking for ", to)
 	addr, err := getAddr(c.Tid, to, direct)
 	CHECK(err)
 
@@ -73,7 +73,7 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 	data, err := json.Marshal(message)
 	CHECK(err)
 	output := bytes.NewBuffer(data)
-	fmt.Println("Sending request to: ", invokeurl)
+	fmt.Println(c.Fname, "- Sending request to: ", invokeurl)
 	go func() {
 		response, err := http.Post(invokeurl, "*/*", output) // invokation
 
@@ -84,7 +84,7 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 		fmt.Println("response: ", response)
 	}()
 
-	fmt.Println("Message sent to ", to, " for txn ", c.Tid, "through ", invokeurl, " - ", v)
+	fmt.Println(c.Fname, "- Message sent to ", to, " for txn ", c.Tid, "through ", invokeurl, " - ", v)
 
 	return nil
 }
@@ -206,8 +206,7 @@ func (c *MeshGoClient) listenIncommingMessages() {
 	lip, err := GetLocalIPv4()
 	CHECK(err)
 	caddr := lip[0].String() + ":" + strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)
-	fmt.Println("going into the listening loop with addr ", caddr)
-	fmt.Printf("endpoint: /function/%s\n", c.Fname)
+	fmt.Println(c.Tid, "- going into the listening loop with addr ", caddr)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/function/"+c.Fname, http.HandlerFunc(
@@ -397,15 +396,12 @@ func NewMeshGoClient(fname string) *MeshGoClient {
 	InitClient()
 
 	if client.Rpcc == nil {
-		fmt.Println("newmeshgoclient: new rpcc")
 		client.Rpcc = RPCC
 	} else {
-		fmt.Println("newmeshgoclient: uu")
 	}
 
 	client.Writes = make(map[string]string, 0)
 	client.Deps = make(map[string]VC, 0)
-	//client.Buffer = append(client.Buffer, 0)
 	client.Fname = fname
 	client.Delivered = make([]Envelope, 0)
 	client.interChan = make(chan struct{})
@@ -434,7 +430,6 @@ func (c *MeshGoClient) OpenEnvelope(envelope Envelope) {
 }
 
 func Run(input []byte) []byte {
-	fmt.Println("input: ", input)
 	fmt.Println("inputstr: ", string(input))
 	var envelope Envelope
 	err := json.Unmarshal(input, &envelope)
@@ -454,7 +449,7 @@ func Run(input []byte) []byte {
 	envelope.Abort = client.Abort
 	envelopeStr, err := json.Marshal(envelope)
 	CHECK(err)
-	fmt.Println(string(envelopeStr))
+	fmt.Println("returning... ", string(envelopeStr))
 	return envelopeStr
 }
 
@@ -487,7 +482,7 @@ outer:
 				vs := v.([]interface{})
 				client.Write(vs[0].(string), vs[1].(string))
 			case "O":
-				fmt.Println("FANOUT")
+				fmt.Println(client.Tid, "- FANOUT")
 				// handle fanout
 				client.InitTxn()
 				grado := int(v.(float64))
@@ -530,14 +525,14 @@ outer:
 				}
 				return nil
 			case "J":
-				fmt.Println("JOIN")
+				fmt.Println(client.Tid, " - JOIN")
 				// prepare workload
 				i++
 				client.Workload = client.Workload[i:]
 				client.SendMessage("Sink", "Sink", false)
 				return nil
 			case "I":
-				fmt.Println("FANIN")
+				fmt.Println(client.Tid, "- FANIN")
 				// handle fanin
 				client.InitMailBoxService()
 				var fromlist []string
