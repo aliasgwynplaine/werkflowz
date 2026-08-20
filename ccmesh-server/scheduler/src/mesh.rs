@@ -8,6 +8,98 @@ use rustc_hash::FxHashMap as HashMap;
 use std::collections::VecDeque;
 use std::convert::Infallible;
 
+pub async fn mesh_service_x(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    let mut workloads = VecDeque::with_capacity(NLAMBDA);
+    let grado = 3;
+    {
+        // first lambda
+        workloads.push_back(get_20());
+
+        // fanout
+
+        for _ in 0..grado {
+            workloads.push_back(get_21());
+        }
+
+        // last lambda
+        workloads.push_back(get_01());
+    }
+
+    'outer: loop {
+        let mut c = GoClient::new();
+        let mut workloads = workloads.clone();
+        let l = workloads.len();
+
+        c.workload = workloads.pop_front().unwrap();
+        let req = serde_json::to_string(&c).unwrap();
+        let res = send_req(0, req, "Entry").await;
+        let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
+
+        if res_c.abort {
+            continue 'outer;
+        }
+
+        let mut requests = vec![];
+        for _ in 0..grado {
+            c.workload = workloads.pop_front().unwrap();
+            let req = serde_json::to_string(&c).unwrap();
+            requests.push(req.clone());
+        }
+
+        let (c1, c2, c3) = tokio::join!(
+            {
+                let req = requests.pop().unwrap();
+                async move {
+                    let res = send_req(0, req, "Entry").await;
+                    let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
+                    res_c
+                }
+            },
+            {
+                let req = requests.pop().unwrap();
+                async move {
+                    let res = send_req(0, req, "Entry").await;
+                    let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
+                    res_c
+                }
+            },
+            {
+                let req = requests.pop().unwrap();
+                async move {
+                    let res = send_req(0, req, "Entry").await;
+                    let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
+                    res_c
+                }
+            }
+        );
+
+        c.deps.merge_into(&c1.deps);
+        c.deps.merge_into(&c2.deps);
+        c.deps.merge_into(&c3.deps);
+        c.local.merge_into(&c1.local);
+        c.local.merge_into(&c2.local);
+        c.local.merge_into(&c3.local);
+
+        if c1.abort || c2.abort || c3.abort {
+            continue 'outer;
+        }
+        
+        c.workload = workloads.pop_front().unwrap();
+        let req = serde_json::to_string(&c).unwrap();
+        let res = send_req(0, req, "Entry").await;
+        let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
+
+        if res_c.abort {
+            continue 'outer;
+        }
+
+        break;
+    }
+
+    Ok(Response::new(Body::from("Ok")))
+}
+
+
 pub async fn mesh_service(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let mut workloads = VecDeque::with_capacity(NLAMBDA);
     {
