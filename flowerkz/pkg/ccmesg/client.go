@@ -541,8 +541,10 @@ outer:
 				}
 
 				client.WaitForMessages(fromlist)
+				fmt.Println(client.Tid, "we're done with waiting")
 
 				if client.Abort {
+					fmt.Println(client.Tid, "oops... aborted. go out without commit")
 					break outer
 				}
 			case "C":
@@ -551,6 +553,8 @@ outer:
 
 		}
 	}
+
+	fmt.Println(client.Tid, "out!")
 
 	return nil
 }
