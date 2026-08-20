@@ -33,6 +33,7 @@ type Envelope struct {
 	Deps     map[string]VC            `json:"deps"`
 	Writes   map[string]string        `json:"writes"`
 	Workload []map[string]interface{} `json:"workload"`
+	Abort    bool                     `json:"abort"`
 }
 
 type MeshGoClient struct {
@@ -448,7 +449,7 @@ func Run(input []byte) []byte {
 
 	client.OpenEnvelope(envelope)
 	client.Execute()
-	CHECK(err)
+	envelope.Abort = client.Abort
 	envelopeStr, err := json.Marshal(envelope)
 	CHECK(err)
 	//fmt.Println(string(clientStr))
