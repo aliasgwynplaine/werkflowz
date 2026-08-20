@@ -173,7 +173,7 @@ outer:
 		case <-timeout:
 			fmt.Println(c.Tid, " - Timeout! -", received)
 			c.Abort = true
-			break
+			break outer
 		default:
 			/* empty */
 		}
