@@ -210,7 +210,7 @@ func (c *MeshGoClient) listenIncommingMessages() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/function/"+c.Fname, http.HandlerFunc(
 		func(rw http.ResponseWriter, r *http.Request) {
-			fmt.Println("message received!!!!")
+			fmt.Println(c.Tid, " - message received!!!!")
 			decoder := json.NewDecoder(r.Body)
 
 			var envelope Envelope
@@ -241,16 +241,6 @@ func (c *MeshGoClient) listenIncommingMessages() {
 	fmt.Println(c.Tid, " - MailBoxService online!")
 	c.subscribe(caddr)
 
-}
-
-func (c *MeshGoClient) handleConn(conn net.Conn) {
-	fmt.Println("Handling conn: ", conn)
-	defer conn.Close()
-
-	var envelope Envelope
-	err := json.NewDecoder(conn).Decode(&envelope)
-	CHECK(err)
-	c.recv(envelope)
 }
 
 func (c *MeshGoClient) recv(envelope Envelope) {
@@ -285,7 +275,9 @@ func (c *MeshGoClient) deliver(envelope Envelope) {
 	for k, v := range envelope.Writes {
 		if vv, ok := c.Writes[k]; ok {
 			if v != vv {
-				panic("Operation not permited: concurrent write in txn.")
+				fmt.Println("Operation not permited: concurrent write in txn.")
+				c.Abort = true
+				break
 			}
 		}
 
