@@ -459,7 +459,6 @@ func (client *MeshGoClient) Execute() []byte {
 	}
 	fmt.Println(client.Workload)
 	workload := client.Workload
-	abort := false
 outer:
 	for i := 0; i < len(workload); i++ {
 		op := workload[i]
@@ -474,7 +473,7 @@ outer:
 				fmt.Println("READ")
 				res := client.Read(v.(string))
 				if res == "None" {
-					abort = true
+					client.Abort = true
 					break outer
 				}
 			case "W":
@@ -537,18 +536,22 @@ outer:
 				client.InitMailBoxService()
 				var fromlist []string
 
-				for i := 0; i < int(v.(float64)); i++ {
-					fromlist = append(fromlist, fmt.Sprintf("fux_%d", i))
+				for j := 0; j < int(v.(float64)); j++ {
+					fromlist = append(fromlist, fmt.Sprintf("fux_%d", j))
 				}
 
 				client.WaitForMessages(fromlist)
+
+				if client.Abort {
+					break outer
+				}
 			case "C":
 				client.CommitTxn()
 			}
 
 		}
 	}
-	client.Abort = abort
+
 	return nil
 }
 
