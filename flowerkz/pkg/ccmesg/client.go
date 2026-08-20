@@ -26,8 +26,6 @@ var SNITCH_PORT = "46655"
 
 var RPCC *MeshClient = nil
 
-var server *http.Server
-
 type Envelope struct {
 	Tid      string                   `json:"tid"`
 	Fname    string                   `json:"fname"`
@@ -41,6 +39,7 @@ type MeshGoClient struct {
 	Rpcc *MeshClient
 	/* messages */
 	mu        sync.Mutex
+	server    *http.Server
 	Tid       string `json:"tid"`
 	Fname     string `json:"fname"`
 	ServerId  string `json:"serverid"`
@@ -154,7 +153,7 @@ outer:
 
 			for i := 0; i < len(fromlist); i++ {
 				if e.Fname == fromlist[i] {
-					fmt.Println("found msg from ", e.Fname)
+					//fmt.Println("found msg from ", e.Fname)
 					received[e.Fname] = true
 					break
 				}
@@ -184,11 +183,11 @@ outer:
 		}
 	}
 
-	if server != nil {
+	if c.server != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
-		server.Shutdown(ctx)
-		server = nil
+		c.server.Shutdown(ctx)
+		c.server = nil
 	}
 
 	c.mu.Unlock()
@@ -223,7 +222,7 @@ func (c *MeshGoClient) listenIncommingMessages() {
 		},
 	))
 
-	server = &http.Server{
+	c.server = &http.Server{
 		Handler: mux,
 	}
 
@@ -236,7 +235,7 @@ func (c *MeshGoClient) listenIncommingMessages() {
 		if err != nil {
 			fmt.Println("uu - ", err)
 		}
-	}(server)
+	}(c.server)
 
 	//fmt.Println("MailBoxService online!")
 	c.subscribe(caddr)
@@ -274,7 +273,7 @@ func (c *MeshGoClient) recv(envelope Envelope) {
 }
 
 func (c *MeshGoClient) deliver(envelope Envelope) {
-	fmt.Println("Delivering ", envelope)
+	//fmt.Println("Delivering ", envelope)
 	c.mu.Lock()
 	c.Delivered = append(c.Delivered, envelope)
 
