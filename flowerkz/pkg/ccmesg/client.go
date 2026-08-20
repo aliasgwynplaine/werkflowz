@@ -171,7 +171,7 @@ outer:
 
 		select {
 		case <-timeout:
-			fmt.Println(c.Tid, " - Timeout!")
+			fmt.Println(c.Tid, " - Timeout! -", received)
 			c.Abort = true
 			break
 		default:
@@ -180,13 +180,13 @@ outer:
 	}
 
 	if c.Abort {
-		fmt.Println(c.Tid, " aborted!")
+		fmt.Println(c.Tid, " aborted! - ", received)
 	} else {
 		fmt.Println(c.Tid, " ready to go!")
 	}
 
 	if c.server != nil {
-		fmt.Println(c.Tid, "- shutting down!")
+		fmt.Println(c.Tid, "- shutting down! - ", received)
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 		c.server.Shutdown(ctx)
