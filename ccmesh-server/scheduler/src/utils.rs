@@ -49,7 +49,7 @@ lazy_static! {
         }
         let mut builder = WorkloadBuilder::default()
             .num_read(2)
-            .num_write(1)
+            .num_write(0)
             .num_migrate(0)
             .uniform();
         for _ in 0..1000000 {
@@ -60,8 +60,8 @@ lazy_static! {
     static ref WORKLOADS2103: Vec<Workload> = {
         let mut res = vec![];
         let mut builder = WorkloadBuilder::default()
-            .num_read(1)
-            .num_write(0)
+            .num_read(2)
+            .num_write(1)
             .num_migrate(0)
             .num_fanout(3)
             .zipf(1.0);

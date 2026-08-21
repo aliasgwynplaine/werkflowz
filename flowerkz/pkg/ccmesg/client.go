@@ -26,8 +26,6 @@ var SNITCH_PORT = "46655"
 
 var RPCC *MeshClient = nil
 
-var server *http.Server
-
 type Envelope struct {
 	Tid      string                   `json:"tid"`
 	Fname    string                   `json:"fname"`
@@ -35,12 +33,14 @@ type Envelope struct {
 	Deps     map[string]VC            `json:"deps"`
 	Writes   map[string]string        `json:"writes"`
 	Workload []map[string]interface{} `json:"workload"`
+	Abort    bool                     `json:"abort"`
 }
 
 type MeshGoClient struct {
 	Rpcc *MeshClient
 	/* messages */
 	mu        sync.Mutex
+	server    *http.Server
 	Tid       string `json:"tid"`
 	Fname     string `json:"fname"`
 	ServerId  string `json:"serverid"`
@@ -57,7 +57,7 @@ type MeshGoClient struct {
 }
 
 func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
-	fmt.Println("asking for ", to)
+	fmt.Println(c.Tid, "-", c.Fname, " asking for ", to)
 	addr, err := getAddr(c.Tid, to, direct)
 	CHECK(err)
 
@@ -73,18 +73,23 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 	data, err := json.Marshal(message)
 	CHECK(err)
 	output := bytes.NewBuffer(data)
-	fmt.Println("Sending request to: ", invokeurl)
+	fmt.Println(c.Tid, "-", c.Fname, "- Sending request to: ", invokeurl)
 	go func() {
-	response, err := http.Post(invokeurl, "*/*", output) // invokation
+		//http.DefaultClient.Timeout = 1 * time.Second
 
-	if err != nil {
-		return
-	}
+		response, err := http.Post(invokeurl, "*/*", output) // invokation
 
-	fmt.Println("response: ", response)
+		if err != nil {
+			fmt.Println(c.Tid, "-", c.Fname, "- returning uu ", err)
+			return
+		}
+
+		defer response.Body.Close()
+
+		fmt.Println(c.Tid, "-", c.Fname, "- response: ", response)
 	}()
 
-	fmt.Println("Message sent to ", to, " for txn ", c.Tid, "through ", invokeurl)
+	fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
 
 	return nil
 }
@@ -138,60 +143,62 @@ func (c *MeshGoClient) WaitForMessages(fromlist []string) error {
 		received[p] = false
 	}
 
-	fmt.Println("received: ", received)
-	timeout := time.After(1 * time.Second)
+	timeout := time.After(5 * time.Second)
+	var out bool
 
 outer:
 	for {
-		//fmt.Println("lock")
 		c.mu.Lock()
-		//fmt.Println(received)
 		for _, e := range c.Delivered {
 			if received[e.Fname] {
-				//fmt.Println("already received from ", e.Fname)
 				continue
 			}
 
 			for i := 0; i < len(fromlist); i++ {
 				if e.Fname == fromlist[i] {
-					fmt.Println("found msg from ", e.Fname)
+					fmt.Println(c.Tid, " - found msg from ", e.Fname)
 					received[e.Fname] = true
 					break
 				}
 			}
 
-			out := true
+			out = true
 
 			for _, r := range received {
 				out = r && out
 			}
 
 			if out {
-				fmt.Println("All messages received !")
+				fmt.Println(c.Tid, "- All messages received !")
+				c.mu.Unlock()
 				break outer
 			}
 		}
-		//fmt.Println("Unlock")
 		c.mu.Unlock()
 
 		select {
-			case <-timeout:
-				fmt.Println("Timeout!")
-				c.Abort = true
-				break
-			default:
-				/* empty */
+		case <-timeout:
+			fmt.Println(c.Tid, " - Timeout! -", received)
+			c.Abort = !out
+			break outer
+		default:
+			/* empty */
 		}
 	}
 
-	if server != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
-		defer cancel()
-		server.Shutdown(ctx)
-		server = nil
+	if c.Abort {
+		fmt.Println(c.Tid, " aborted! - ", received)
+	} else {
+		fmt.Println(c.Tid, " ready to go!")
 	}
 
-	c.mu.Unlock()
+	if c.server != nil {
+		fmt.Println(c.Tid, "- shutting down! - ", received)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		c.server.Shutdown(ctx)
+		c.server = nil
+	}
 
 	return nil
 }
@@ -204,13 +211,12 @@ func (c *MeshGoClient) listenIncommingMessages() {
 	lip, err := GetLocalIPv4()
 	CHECK(err)
 	caddr := lip[0].String() + ":" + strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)
-	fmt.Println("going into the listening loop with addr ", caddr)
-	fmt.Printf("endpoint: /function/%s\n", c.Fname)
+	fmt.Println(c.Tid, "- going into the listening loop with addr ", caddr)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/function/"+c.Fname, http.HandlerFunc(
 		func(rw http.ResponseWriter, r *http.Request) {
-			fmt.Println("message received!!!!")
+			fmt.Println(c.Tid, " - message received!!!!")
 			decoder := json.NewDecoder(r.Body)
 
 			var envelope Envelope
@@ -223,7 +229,7 @@ func (c *MeshGoClient) listenIncommingMessages() {
 		},
 	))
 
-	server = &http.Server {
+	c.server = &http.Server{
 		Handler: mux,
 	}
 
@@ -234,23 +240,13 @@ func (c *MeshGoClient) listenIncommingMessages() {
 		err := s.Serve(ln)
 
 		if err != nil {
-			fmt.Println("uu - ", err)
+			fmt.Println(c.Tid, "- uu - ", err)
 		}
-	}(server)
+	}(c.server)
 
-	fmt.Println("MailBoxService online!")
+	fmt.Println(c.Tid, " - MailBoxService online!")
 	c.subscribe(caddr)
 
-}
-
-func (c *MeshGoClient) handleConn(conn net.Conn) {
-	fmt.Println("Handling conn: ", conn)
-	defer conn.Close()
-
-	var envelope Envelope
-	err := json.NewDecoder(conn).Decode(&envelope)
-	CHECK(err)
-	c.recv(envelope)
 }
 
 func (c *MeshGoClient) recv(envelope Envelope) {
@@ -285,7 +281,9 @@ func (c *MeshGoClient) deliver(envelope Envelope) {
 	for k, v := range envelope.Writes {
 		if vv, ok := c.Writes[k]; ok {
 			if v != vv {
-				panic("Operation not permited: concurrent write in txn.")
+				fmt.Println(c.Tid, "- Operation not permited: concurrent write in txn.")
+				c.Abort = true
+				break
 			}
 		}
 
@@ -323,7 +321,7 @@ func (client *MeshGoClient) Read(k string) string {
 }
 
 func (client *MeshGoClient) CommitTxn() {
-	fmt.Println("Commit Txn ----", client.Deps, client.Writes)
+	fmt.Println(client.Tid, "- Commit Txn ----", client.Deps, client.Writes)
 	depsStr, err := json.Marshal(client.Deps)
 	CHECK(err)
 	writesStr, err := json.Marshal(client.Writes)
@@ -395,15 +393,12 @@ func NewMeshGoClient(fname string) *MeshGoClient {
 	InitClient()
 
 	if client.Rpcc == nil {
-		fmt.Println("newmeshgoclient: new rpcc")
 		client.Rpcc = RPCC
 	} else {
-		fmt.Println("newmeshgoclient: uu")
 	}
 
 	client.Writes = make(map[string]string, 0)
 	client.Deps = make(map[string]VC, 0)
-	//client.Buffer = append(client.Buffer, 0)
 	client.Fname = fname
 	client.Delivered = make([]Envelope, 0)
 	client.interChan = make(chan struct{})
@@ -432,8 +427,6 @@ func (c *MeshGoClient) OpenEnvelope(envelope Envelope) {
 }
 
 func Run(input []byte) []byte {
-	fmt.Println("input: ", input)
-	fmt.Println("inputstr: ", string(input))
 	var envelope Envelope
 	err := json.Unmarshal(input, &envelope)
 	CHECK(err)
@@ -448,11 +441,17 @@ func Run(input []byte) []byte {
 	InitRPCClient(client)
 
 	client.OpenEnvelope(envelope)
+	fmt.Println(client.Tid, "- Init Execution - inputstr: ", string(input))
 	client.Execute()
-	CHECK(err)
+	// todo erase workload to avoid unnecessary serialization
+	envelope.Abort = client.Abort
 	envelopeStr, err := json.Marshal(envelope)
 	CHECK(err)
-	//fmt.Println(string(clientStr))
+	if client.Abort {
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(envelopeStr))
+	} else {
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(envelopeStr))
+	}
 	return envelopeStr
 }
 
@@ -460,9 +459,8 @@ func (client *MeshGoClient) Execute() []byte {
 	if client.Writes == nil || client.Deps == nil {
 		panic("client not init")
 	}
-	//fmt.Println(client.Workload)
+	fmt.Println(client.Tid, " executing workload -> ", client.Workload)
 	workload := client.Workload
-	abort := false
 outer:
 	for i := 0; i < len(workload); i++ {
 		op := workload[i]
@@ -475,21 +473,17 @@ outer:
 			switch k {
 			case "R":
 				fmt.Println("READ")
-				//start := time.Now()
 				res := client.Read(v.(string))
 				if res == "None" {
-					abort = true
+					client.Abort = true
 					break outer
 				}
-				//fmt.Println("read time:", time.Since(start))
 			case "W":
 				fmt.Println("WRITE")
-				//start := time.Now()
 				vs := v.([]interface{})
 				client.Write(vs[0].(string), vs[1].(string))
-				//fmt.Println("write time:", time.Since(start))
 			case "O":
-				fmt.Println("FANOUT")
+				fmt.Println(client.Tid, "- FANOUT")
 				// handle fanout
 				client.InitTxn()
 				grado := int(v.(float64))
@@ -518,44 +512,49 @@ outer:
 					}
 				}
 
-				fmt.Println("WoRKLOADDDDD:::: -> ", workload[i:])
+				fmt.Println(client.Tid, "- WoRKLOADDDDD:::: -> ", workload[i:])
 
 				for nb := 0; nb < grado; nb++ {
 					payload[nb] = append(payload[nb], workload[i:]...)
 					client.Workload = payload[nb]
 					if rand.IntN(2) == 1 {
-						client.SendMessage("Entry1", fmt.Sprintf("fux_%d", nb), true)
-						
+						client.SendMessage(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+
 					} else {
-						client.SendMessage("Entry2", fmt.Sprintf("fux_%d", nb), true)
+						client.SendMessage(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 					}
 				}
+
 				return nil
 			case "J":
-				fmt.Println("JOIN")
+				fmt.Println(client.Tid, "-", client.Fname, "- JOIN")
 				// prepare workload
 				i++
 				client.Workload = client.Workload[i:]
 				client.SendMessage("Sink", "Sink", false)
 				return nil
 			case "I":
-				fmt.Println("FANIN")
+				fmt.Println(client.Tid, "- FANIN")
 				// handle fanin
 				client.InitMailBoxService()
 				var fromlist []string
 
-				for i := 0; i < int(v.(float64)); i++ {
-					fromlist = append(fromlist, fmt.Sprintf("fux_%d", i))
+				for j := 0; j < int(v.(float64)); j++ {
+					fromlist = append(fromlist, fmt.Sprintf("fux_%d", j))
 				}
 
 				client.WaitForMessages(fromlist)
+
+				if client.Abort {
+					return nil
+				}
 			case "C":
 				client.CommitTxn()
 			}
 
 		}
 	}
-	client.Abort = abort
+
 	return nil
 }
 

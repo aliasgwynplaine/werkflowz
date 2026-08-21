@@ -26,6 +26,7 @@ pub struct Envelope {
     pub deps: HashMap<K, VC>,
     pub writes: HashMap<K, V>,
     pub workload: Workload,
+    pub abort: bool,
 }
 
 impl Envelope {
