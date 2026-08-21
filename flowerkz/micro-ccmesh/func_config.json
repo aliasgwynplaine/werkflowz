@@ -2,13 +2,13 @@
   {
     "funcName": "Entry1",
     "funcId": 1,
-    "minWorkers": 4,
-    "maxWorkers": 4
+    "minWorkers": 64,
+    "maxWorkers": 64
   },
   {
     "funcName": "Entry2",
     "funcId": 2,
-    "minWorkers": 4,
-    "maxWorkers": 4
+    "minWorkers": 64,
+    "maxWorkers": 64
   }
 ]
