@@ -281,7 +281,7 @@ func (c *MeshGoClient) deliver(envelope Envelope) {
 	for k, v := range envelope.Writes {
 		if vv, ok := c.Writes[k]; ok {
 			if v != vv {
-				fmt.Println("Operation not permited: concurrent write in txn.")
+				fmt.Println(c.Tid, "- Operation not permited: concurrent write in txn.")
 				c.Abort = true
 				break
 			}
