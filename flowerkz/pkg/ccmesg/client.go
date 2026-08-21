@@ -75,7 +75,7 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 	output := bytes.NewBuffer(data)
 	fmt.Println(c.Tid, "-", c.Fname, "- Sending request to: ", invokeurl)
 	go func() {
-		http.DefaultClient.Timeout = 1 * time.Second
+		//http.DefaultClient.Timeout = 1 * time.Second
 
 		response, err := http.Post(invokeurl, "*/*", output) // invokation
 
@@ -143,7 +143,7 @@ func (c *MeshGoClient) WaitForMessages(fromlist []string) error {
 		received[p] = false
 	}
 
-	timeout := time.After(1 * time.Second)
+	timeout := time.After(5 * time.Second)
 	var out bool
 
 outer:
@@ -447,7 +447,11 @@ func Run(input []byte) []byte {
 	envelope.Abort = client.Abort
 	envelopeStr, err := json.Marshal(envelope)
 	CHECK(err)
-	fmt.Println(client.Tid, "- Execution completed! - ", string(envelopeStr))
+	if client.Abort {
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(envelopeStr))
+	} else {
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(envelopeStr))
+	}
 	return envelopeStr
 }
 
@@ -542,7 +546,6 @@ outer:
 				client.WaitForMessages(fromlist)
 
 				if client.Abort {
-					fmt.Println(client.Tid, "oops... aborted. go out without commit")
 					return nil
 				}
 			case "C":
