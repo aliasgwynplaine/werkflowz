@@ -57,7 +57,7 @@ type MeshGoClient struct {
 }
 
 func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
-	fmt.Println(c.Fname, "- asking for ", to)
+	fmt.Println(c.Tid, "-", c.Fname, " asking for ", to)
 	addr, err := getAddr(c.Tid, to, direct)
 	CHECK(err)
 
@@ -73,23 +73,23 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 	data, err := json.Marshal(message)
 	CHECK(err)
 	output := bytes.NewBuffer(data)
-	fmt.Println(c.Fname, "- Sending request to: ", invokeurl)
+	fmt.Println(c.Tid, "-", c.Fname, "- Sending request to: ", invokeurl)
 	go func() {
-		http.DefaultClient.Timeout = 2 * time.Second
+		http.DefaultClient.Timeout = 1 * time.Second
 
 		response, err := http.Post(invokeurl, "*/*", output) // invokation
 
 		if err != nil {
-			fmt.Println(c.Tid, "- returning uu ", err)
+			fmt.Println(c.Tid, "-", c.Fname, "- returning uu ", err)
 			return
 		}
 
 		defer response.Body.Close()
 
-		fmt.Println(c.Tid, "- response: ", response)
+		fmt.Println(c.Tid, "-", c.Fname, "- response: ", response)
 	}()
 
-	fmt.Println(c.Fname, "- Message sent to ", to, " for txn ", c.Tid, "through ", invokeurl, " - ", v)
+	fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
 
 	return nil
 }
@@ -143,7 +143,7 @@ func (c *MeshGoClient) WaitForMessages(fromlist []string) error {
 		received[p] = false
 	}
 
-	timeout := time.After(2 * time.Second)
+	timeout := time.After(1 * time.Second)
 	var out bool
 
 outer:
@@ -427,7 +427,6 @@ func (c *MeshGoClient) OpenEnvelope(envelope Envelope) {
 }
 
 func Run(input []byte) []byte {
-	fmt.Println("inputstr: ", string(input))
 	var envelope Envelope
 	err := json.Unmarshal(input, &envelope)
 	CHECK(err)
@@ -442,11 +441,13 @@ func Run(input []byte) []byte {
 	InitRPCClient(client)
 
 	client.OpenEnvelope(envelope)
+	fmt.Println(client.Tid, "- Init Execution - inputstr: ", string(input))
 	client.Execute()
+	// todo erase workload to avoid unnecessary serialization
 	envelope.Abort = client.Abort
 	envelopeStr, err := json.Marshal(envelope)
 	CHECK(err)
-	fmt.Println("returning... ", string(envelopeStr))
+	fmt.Println(client.Tid, "- Execution completed! - ", string(envelopeStr))
 	return envelopeStr
 }
 
@@ -454,7 +455,7 @@ func (client *MeshGoClient) Execute() []byte {
 	if client.Writes == nil || client.Deps == nil {
 		panic("client not init")
 	}
-	fmt.Println(client.Workload)
+	fmt.Println(client.Tid, " executing workload -> ", client.Workload)
 	workload := client.Workload
 outer:
 	for i := 0; i < len(workload); i++ {
@@ -507,21 +508,22 @@ outer:
 					}
 				}
 
-				fmt.Println("WoRKLOADDDDD:::: -> ", workload[i:])
+				fmt.Println(client.Tid, "- WoRKLOADDDDD:::: -> ", workload[i:])
 
 				for nb := 0; nb < grado; nb++ {
 					payload[nb] = append(payload[nb], workload[i:]...)
 					client.Workload = payload[nb]
 					if rand.IntN(2) == 1 {
-						client.SendMessage(fmt.Sprintf("Entry1?t=%s", client.Tid), fmt.Sprintf("fux_%d", nb), true)
+						client.SendMessage(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 
 					} else {
-						client.SendMessage(fmt.Sprintf("Entry2?t=%s", client.Tid), fmt.Sprintf("fux_%d", nb), true)
+						client.SendMessage(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 					}
 				}
+
 				return nil
 			case "J":
-				fmt.Println(client.Tid, " - JOIN")
+				fmt.Println(client.Tid, "-", client.Fname, "- JOIN")
 				// prepare workload
 				i++
 				client.Workload = client.Workload[i:]
