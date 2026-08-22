@@ -47,6 +47,7 @@ type MeshGoClient struct {
 	Payload   string `json:"payload"`
 	Buffer    []Envelope
 	Delivered []Envelope
+	received  map[string]bool
 	interChan chan struct{}
 	/* causalmesh tcc */
 	Workload []map[string]interface{} `json:"workload"`
@@ -132,6 +133,59 @@ func (c *MeshGoClient) subscribe(addr string) {
 	buf := make([]byte, 32) // todo hardcoded
 	_, err = conn.Read(buf)
 	//fmt.Println("recv'd ", buf[:n], " as response")
+}
+
+func (c *MeshGoClient) waitForMessages2(fromlist []string) {
+	if c.Tid == "" {
+		panic("No TID!")
+	}
+
+	ln, err := net.Listen("tcp", "0.0.0.0:0")
+
+	if err != nil {
+		fmt.Errorf("err:", err)
+		c.Abort = true
+		return
+	}
+
+	lip, err := GetLocalIPv4()
+	CHECK(err)
+	caddr := lip[0].String() + ":" + strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/function/"+c.Fname, http.HandlerFunc(
+		func(rw http.ResponseWriter, r *http.Request) {
+			decoder := json.NewDecoder(r.Body)
+			defer r.Body.Close()
+
+			var envelope Envelope
+			err := decoder.Decode(&envelope)
+			CHECK(err)
+
+			c.recv(envelope)
+		},
+	))
+
+	c.server = &http.Server{
+		Handler: mux,
+	}
+
+	for _, s := range fromlist {
+		c.received[s] = false
+	}
+
+	servErrCh := make(chan error, 1)
+
+	go func() {
+		servErrCh <- c.server.Serve(ln)
+	}()
+
+	c.subscribe(caddr)
+
+	<-c.interChan
+
+	c.server.Close()
+	<-servErrCh
 }
 
 // todo: change to a condition variable
@@ -296,6 +350,16 @@ func (c *MeshGoClient) deliver(envelope Envelope) {
 		c.Writes[k] = v
 	}
 
+	c.received[envelope.Fname] = true
+
+	for _, r := range c.received {
+		if !r {
+			break
+		}
+
+		close(c.interChan)
+	}
+
 	c.mu.Unlock()
 }
 
@@ -406,17 +470,10 @@ func NewMeshGoClient(fname string) *MeshGoClient {
 	client.Deps = make(map[string]VC, 0)
 	client.Fname = fname
 	client.Delivered = make([]Envelope, 0)
+	client.received = make(map[string]bool)
 	client.interChan = make(chan struct{})
 
 	return &client
-}
-
-func (c *MeshGoClient) InitMailBoxService() {
-	if c.Tid == "" {
-		panic("No Tid")
-	}
-
-	c.listenIncommingMessages()
 }
 
 func (c *MeshGoClient) OpenEnvelope(envelope Envelope) {
@@ -540,11 +597,7 @@ outer:
 			case "I":
 				//fmt.Println(client.Tid, "- FANIN")
 				// handle fanin
-				client.InitMailBoxService()
-
-				if client.Abort {
-					return nil
-				}
+				//client.InitMailBoxService()
 
 				var fromlist []string
 
