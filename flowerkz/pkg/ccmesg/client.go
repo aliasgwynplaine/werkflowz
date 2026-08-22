@@ -205,7 +205,12 @@ outer:
 
 func (c *MeshGoClient) listenIncommingMessages() {
 	ln, err := net.Listen("tcp", "0.0.0.0:0")
-	CHECK(err)
+
+	if err != nil {
+		fmt.Println("error: ", err)
+		c.Abort = true
+		return
+	}
 	//defer ln.Close()
 
 	lip, err := GetLocalIPv4()
@@ -537,6 +542,11 @@ outer:
 				//fmt.Println(client.Tid, "- FANIN")
 				// handle fanin
 				client.InitMailBoxService()
+
+				if client.Abort {
+					return nil
+				}
+
 				var fromlist []string
 
 				for j := 0; j < int(v.(float64)); j++ {
