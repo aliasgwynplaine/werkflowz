@@ -243,7 +243,8 @@ func (c *MeshGoClient) listenIncommingMessages() {
 			fmt.Println(c.Tid, "- uu - ", err)
 		}
 
-		(*ln).Close()
+		err = (*ln).Close()
+		CHECK(err)
 	}(c.server, &ln)
 
 	//fmt.Println(c.Tid, " - MailBoxService online!")
