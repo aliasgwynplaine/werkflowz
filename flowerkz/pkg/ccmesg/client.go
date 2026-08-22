@@ -143,7 +143,7 @@ func (c *MeshGoClient) WaitForMessages(fromlist []string) error {
 		received[p] = false
 	}
 
-	timeout := time.After(5 * time.Second)
+	timeout := time.After(10 * time.Second)
 	var out bool
 
 outer:
@@ -234,15 +234,17 @@ func (c *MeshGoClient) listenIncommingMessages() {
 	}
 
 	//fmt.Println("deploying the http.")
-	go func(s *http.Server) {
+	go func(s *http.Server, ln *net.Listener) {
 		//err = http.Serve(ln, nil)
 		//CHECK(err)
-		err := s.Serve(ln)
+		err := s.Serve(*ln)
 
 		if err != nil {
 			fmt.Println(c.Tid, "- uu - ", err)
 		}
-	}(c.server)
+
+		(*ln).Close()
+	}(c.server, &ln)
 
 	//fmt.Println(c.Tid, " - MailBoxService online!")
 	c.subscribe(caddr)
