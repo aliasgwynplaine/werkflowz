@@ -84,9 +84,8 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 			return
 		}
 
-		defer response.Body.Close()
-
 		//fmt.Println(c.Tid, "-", c.Fname, "- response: ", response)
+		response.Body.Close()
 	}()
 
 	//fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
@@ -287,7 +286,7 @@ func (c *MeshGoClient) deliver(envelope Envelope) {
 	for k, v := range envelope.Writes {
 		if vv, ok := c.Writes[k]; ok {
 			if v != vv {
-				//fmt.Println(c.Tid, "- Operation not permited: concurrent write in txn.")
+				fmt.Println(c.Tid, "- Operation not permited: concurrent write in txn.")
 				c.Abort = true
 				break
 			}
@@ -454,9 +453,9 @@ func Run(input []byte) []byte {
 	envelopeStr, err := json.Marshal(envelope)
 	CHECK(err)
 	if client.Abort {
-		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(envelopeStr))
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
 	} else {
-		fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(envelopeStr))
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(input))
 	}
 	return envelopeStr
 }
