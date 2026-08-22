@@ -135,7 +135,7 @@ func (c *MeshGoClient) subscribe(addr string) {
 	//fmt.Println("recv'd ", buf[:n], " as response")
 }
 
-func (c *MeshGoClient) waitForMessages2(fromlist []string) {
+func (c *MeshGoClient) WaitForMessages2(fromlist []string) {
 	if c.Tid == "" {
 		panic("No TID!")
 	}
@@ -605,7 +605,7 @@ outer:
 					fromlist = append(fromlist, fmt.Sprintf("fux_%d", j))
 				}
 
-				client.WaitForMessages(fromlist)
+				client.WaitForMessages2(fromlist)
 
 				if client.Abort {
 					return nil
