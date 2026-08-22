@@ -284,13 +284,13 @@ func (c *MeshGoClient) deliver(envelope Envelope) {
 	}
 
 	for k, v := range envelope.Writes {
-		if vv, ok := c.Writes[k]; ok {
-			if v != vv {
-				fmt.Println(c.Tid, "- Operation not permited: concurrent write in txn.")
-				c.Abort = true
-				break
-			}
-		}
+		//if vv, ok := c.Writes[k]; ok {
+		//	if v != vv {
+		//		fmt.Println(c.Tid, "- Operation not permited: concurrent write in txn.")
+		//		c.Abort = true
+		//		break
+		//	}
+		//}
 
 		//fmt.Println("merging ", k, ": ", v)
 		c.Writes[k] = v
