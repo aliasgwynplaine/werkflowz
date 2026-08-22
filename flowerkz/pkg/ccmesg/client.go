@@ -352,11 +352,13 @@ func (c *MeshGoClient) deliver(envelope Envelope) {
 
 	c.received[envelope.Fname] = true
 
-	for _, r := range c.received {
-		if !r {
-			break
-		}
+	completed := true
 
+	for _, r := range c.received {
+		completed = r && completed
+	}
+
+	if completed {
 		close(c.interChan)
 	}
 
