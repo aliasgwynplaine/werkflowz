@@ -27,13 +27,14 @@ var SNITCH_PORT = "46655"
 var RPCC *MeshClient = nil
 
 type Envelope struct {
-	Tid      string                   `json:"tid"`
-	Fname    string                   `json:"fname"`
-	Payload  string                   `json:"payload"`
-	Deps     map[string]VC            `json:"deps"`
-	Writes   map[string]string        `json:"writes"`
-	Workload []map[string]interface{} `json:"workload"`
-	Abort    bool                     `json:"abort"`
+	Tid       string                   `json:"tid"`
+	Fname     string                   `json:"fname"`
+	Payload   string                   `json:"payload"`
+	Deps      map[string]VC            `json:"deps"`
+	Writes    map[string]string        `json:"writes"`
+	Workload  []map[string]interface{} `json:"workload"`
+	ReturnAdr string                   `json:"return"`
+	Abort     bool                     `json:"abort"`
 }
 
 type MeshGoClient struct {
@@ -48,6 +49,7 @@ type MeshGoClient struct {
 	Buffer    []Envelope
 	Delivered []Envelope
 	received  map[string]bool
+	ReturnAdr string
 	interChan chan struct{}
 	/* causalmesh tcc */
 	Workload []map[string]interface{} `json:"workload"`
@@ -99,12 +101,13 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 
 	invokeurl := "http://" + addr + "/function/" + to
 	message := Envelope{
-		Tid:      c.Tid,
-		Fname:    c.Fname,
-		Payload:  v,
-		Deps:     c.Deps,
-		Writes:   c.Writes,
-		Workload: c.Workload,
+		Tid:       c.Tid,
+		Fname:     c.Fname,
+		Payload:   v,
+		Deps:      c.Deps,
+		Writes:    c.Writes,
+		Workload:  c.Workload,
+		ReturnAdr: c.ReturnAdr,
 	}
 	data, err := json.Marshal(message)
 	CHECK(err)
@@ -560,6 +563,7 @@ func (client *MeshGoClient) Execute() []byte {
 	}
 	//fmt.Println(client.Tid, " executing workload -> ", client.Workload)
 	workload := client.Workload
+	var ln net.Listener
 outer:
 	for i := 0; i < len(workload); i++ {
 		op := workload[i]
@@ -570,6 +574,15 @@ outer:
 
 		for k, v := range op {
 			switch k {
+			case "T":
+				client.InitTxn()
+				ln, err := net.Listen("tcp", ":0")
+				CHECK(err)
+				defer ln.Close()
+				lip, err := GetLocalIPv4()
+				CHECK(err)
+				caddr := lip[0].String() + ":" + strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)
+				client.ReturnAdr = caddr
 			case "R":
 				//fmt.Println("READ")
 				res := client.Read(v.(string))
@@ -584,7 +597,7 @@ outer:
 			case "O":
 				//fmt.Println(client.Tid, "- FANOUT")
 				// handle fanout
-				client.InitTxn()
+				//client.InitTxn()
 				grado := int(v.(float64))
 				payload := make([][]map[string]interface{}, grado)
 				i++
@@ -632,7 +645,7 @@ outer:
 					client.SendMessageSync(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 				}
 
-				return nil
+				break outer
 			case "J":
 				//fmt.Println(client.Tid, "-", client.Fname, "- JOIN")
 				// prepare workload
@@ -658,9 +671,26 @@ outer:
 				}
 			case "C":
 				client.CommitTxn()
+				conn, err := net.Dial("tcp", client.ReturnAdr)
+				CHECK(err)
+				defer conn.Close()
+				conn.Write([]byte("Ok"))
+				return nil
 			}
-
 		}
+	}
+
+	if ln != nil {
+		c, err := ln.Accept()
+
+		if err != nil {
+			fmt.Errorf("error. ", err)
+		}
+
+		defer c.Close()
+		buf := make([]byte, 32)
+		_, err = c.Read(buf)
+		CHECK(err)
 	}
 
 	return nil
