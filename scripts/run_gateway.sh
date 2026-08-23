@@ -27,11 +27,14 @@ fi
 [ -d "$BASE_DIR/outputs" ] && rm -rf $BASE_DIR/outputs
 mkdir -p $BASE_DIR/outputs
 
+ulimit -n 1000000
+echo 1024 65535 > /proc/sys/net/ipv4/ip_local_port_range
+
 $NIGHTCORE_ROOT/bin/release/gateway \
 	--listen_addr=0.0.0.0 \
 	--lb_pick_least_load \
-	--num_io_workers=8 \
-	--max_running_requests=32 \
+	--num_io_workers=64 \
+	--max_running_requests=128 \
 	--func_config_file=$BASE_DIR/func_config.json \
 	--v=1 2> $BASE_DIR/outputs/gateway.log &
 

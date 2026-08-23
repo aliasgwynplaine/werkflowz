@@ -34,10 +34,13 @@ bash compil.sh
 [ -d "$BASE_DIR/outputs" ] && rm -rf $BASE_DIR/outputs
 mkdir -p $BASE_DIR/outputs
 
+ulimit -n 1000000
+echo 1024 65535 > /proc/sys/net/ipv4/ip_local_port_range
+
 $NIGHTCORE_ROOT/bin/release/engine \
     --gateway_addr=$nightcore_gw_addr \
-    --num_io_workers=8 \
-    --gateway_conn_per_worker=32 \
+    --num_io_workers=64 \
+    --gateway_conn_per_worker=64 \
     --disable_monitor \
     --func_config_file=$BASE_DIR/func_config.json \
     --v=1 2>$BASE_DIR/outputs/engine.log &
