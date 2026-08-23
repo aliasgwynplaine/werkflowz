@@ -57,6 +57,41 @@ type MeshGoClient struct {
 	Abort    bool                     `json:"abort"`
 }
 
+func (c *MeshGoClient) SendMessageSync(to string, v string, direct bool) error {
+	//fmt.Println(c.Tid, "-", c.Fname, " asking for ", to)
+	addr, err := getAddr(c.Tid, to, direct)
+	CHECK(err)
+
+	invokeurl := "http://" + addr + "/function/" + to
+	message := Envelope{
+		Tid:      c.Tid,
+		Fname:    c.Fname,
+		Payload:  v,
+		Deps:     c.Deps,
+		Writes:   c.Writes,
+		Workload: c.Workload,
+	}
+	data, err := json.Marshal(message)
+	CHECK(err)
+	output := bytes.NewBuffer(data)
+
+	//http.DefaultClient.Timeout = 1 * time.Second
+
+	response, err := http.Post(invokeurl, "*/*", output) // invokation
+
+	if err != nil {
+		//fmt.Println(c.Tid, "-", c.Fname, "- returning uu ", err)
+		return err
+	}
+
+	//fmt.Println(c.Tid, "-", c.Fname, "- response: ", response)
+	response.Body.Close()
+
+	//fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
+
+	return nil
+}
+
 func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 	//fmt.Println(c.Tid, "-", c.Fname, " asking for ", to)
 	addr, err := getAddr(c.Tid, to, direct)
@@ -184,9 +219,8 @@ func (c *MeshGoClient) WaitForMessages2(fromlist []string) {
 
 	c.subscribe(caddr)
 
-	fmt.Println("Waiting for the end...")
 	<-c.interChan
-	fmt.Println("completed!")
+	fmt.Println(c.Tid, " completed!")
 
 	c.server.Close()
 	<-servErrCh
@@ -579,7 +613,7 @@ outer:
 
 				//fmt.Println(client.Tid, "- WoRKLOADDDDD:::: -> ", workload[i:])
 
-				for nb := 0; nb < grado; nb++ {
+				for nb := 0; nb < grado-1; nb++ {
 					payload[nb] = append(payload[nb], workload[i:]...)
 					client.Workload = payload[nb]
 					if rand.IntN(2) == 1 {
@@ -587,6 +621,15 @@ outer:
 					} else {
 						client.SendMessage(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 					}
+				}
+
+				nb := grado - 1
+				payload[nb] = append(payload[nb], workload[i:]...)
+				client.Workload = payload[nb]
+				if rand.IntN(2) == 1 {
+					client.SendMessageSync(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+				} else {
+					client.SendMessageSync(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 				}
 
 				return nil
