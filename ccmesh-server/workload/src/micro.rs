@@ -127,11 +127,10 @@ impl WorkloadBuilder {
             
             for _ in 0..self.no {
                 let mut tmp = vec![];
-                let limit = 0;//(self.sample_int() % 3) + 1;
-
-                for _ in 0..limit {
-                    tmp.push(Op::R(self.sample()));
-                }
+                //let limit = 0;//(self.sample_int() % 3) + 1;
+                //for _ in 0..limit {
+                //    tmp.push(Op::R(self.sample()));
+                //}
 
                 let limit = 1;//(self.sample_int() % 3) + 1;
 

@@ -63,7 +63,7 @@ lazy_static! {
             .num_read(2)
             .num_write(1)
             .num_migrate(0)
-            .num_fanout(3)
+            .num_fanout(4)
             .init_tx()
             .zipf(1.0);
 

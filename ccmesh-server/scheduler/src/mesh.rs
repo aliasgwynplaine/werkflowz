@@ -9,7 +9,7 @@ use std::collections::VecDeque;
 use std::convert::Infallible;
 
 pub async fn mesh_service_x(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    let grado = 3;
+    let grado = 4;
     let mut workloads = VecDeque::with_capacity(grado + 2);
     {
         // first lambda
@@ -28,7 +28,6 @@ pub async fn mesh_service_x(_req: Request<Body>) -> Result<Response<Body>, Infal
     'outer: loop {
         let mut c = GoClient::new();
         let mut workloads = workloads.clone();
-        let l = workloads.len();
 
         c.workload = workloads.pop_front().unwrap();
         let req = serde_json::to_string(&c).unwrap();
@@ -46,7 +45,15 @@ pub async fn mesh_service_x(_req: Request<Body>) -> Result<Response<Body>, Infal
             requests.push(req.clone());
         }
 
-        let (c1, c2, c3) = tokio::join!(
+        let (c1, c2, c3, c4) = tokio::join!(
+            {
+                let req = requests.pop().unwrap();
+                async move {
+                    let res = send_req(0, req, "Entry").await;
+                    let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
+                    res_c
+                }
+            },
             {
                 let req = requests.pop().unwrap();
                 async move {
@@ -76,11 +83,13 @@ pub async fn mesh_service_x(_req: Request<Body>) -> Result<Response<Body>, Infal
         c.deps.merge_into(&c1.deps);
         c.deps.merge_into(&c2.deps);
         c.deps.merge_into(&c3.deps);
+        c.deps.merge_into(&c4.deps);
         c.local.merge_into(&c1.local);
         c.local.merge_into(&c2.local);
         c.local.merge_into(&c3.local);
+        c.local.merge_into(&c4.local);
 
-        if c1.abort || c2.abort || c3.abort {
+        if c1.abort || c2.abort || c3.abort || c4.abort {
             continue 'outer;
         }
         
