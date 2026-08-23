@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub enum Op {
     R(String),
     W(String, String),
+    T(i32),
     M,
     J(i32),
     I(i32),
@@ -20,6 +21,7 @@ pub type Workload = Vec<Op>;
 #[derive(Default, Debug)]
 pub struct WorkloadBuilder {
     pub delay_writes: bool,
+    pub tx: bool,
     pub nw: i32,
     pub nr: i32,
     pub nm: i32,
@@ -32,6 +34,11 @@ pub struct WorkloadBuilder {
 impl WorkloadBuilder {
     pub fn n10m1(self) -> Self {
         self.num_read(6).num_write(4).num_migrate(1).num_fanout(0)
+    }
+
+    pub fn init_tx(mut self) -> Self {
+        self.tx = true;
+        self
     }
 
     pub fn num_write(mut self, nw: i32) -> Self {
@@ -141,6 +148,13 @@ impl WorkloadBuilder {
 
             ops.push(Op::I(self.no));
             ops.push(Op::C("".to_string()));
+        }
+
+        if self.tx {
+            let mut rops = vec![];
+            rops.push(Op::T(self.no));
+            rops.append(&mut ops);
+            return rops
         }
 
         ops

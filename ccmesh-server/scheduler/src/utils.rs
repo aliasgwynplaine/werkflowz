@@ -64,6 +64,7 @@ lazy_static! {
             .num_write(1)
             .num_migrate(0)
             .num_fanout(3)
+            .init_tx()
             .zipf(1.0);
 
         for _ in 0..1000000 {

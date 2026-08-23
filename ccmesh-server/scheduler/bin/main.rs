@@ -1,7 +1,7 @@
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
 use hz_config::*;
-use scheduler::mesh::{mesh_service, mesh_service0, mesh_service2, mesh_service3};
+use scheduler::mesh::{mesh_service, mesh_service_x, mesh_service0, mesh_service2, mesh_service3};
 use scheduler::mesg::{mesg_service};
 use scheduler::cb::{cb_service, cb_service0, cb_service2, cb_service3};
 use std::convert::Infallible;
@@ -17,7 +17,7 @@ async fn service0(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
 
 async fn service(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
     match MODE {
-        "mesh" => mesh_service(_req).await,
+        "mesh" => mesh_service_x(_req).await,
         "cb" => cb_service(_req).await,
         "ccmesg" => mesg_service(_req).await,
         _ => panic!("unknown mode"),

@@ -9,8 +9,8 @@ use std::collections::VecDeque;
 use std::convert::Infallible;
 
 pub async fn mesh_service_x(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    let mut workloads = VecDeque::with_capacity(NLAMBDA);
     let grado = 3;
+    let mut workloads = VecDeque::with_capacity(grado + 2);
     {
         // first lambda
         workloads.push_back(get_20());
