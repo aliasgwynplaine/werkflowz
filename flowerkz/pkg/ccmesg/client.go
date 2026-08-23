@@ -223,7 +223,7 @@ func (c *MeshGoClient) WaitForMessages2(fromlist []string) {
 	c.subscribe(caddr)
 
 	<-c.interChan
-	fmt.Println(c.Tid, " completed!")
+	//fmt.Println(c.Tid, " completed!")
 
 	c.server.Close()
 	<-servErrCh
@@ -550,11 +550,11 @@ func Run(input []byte) []byte {
 	envelope.Abort = client.Abort
 	envelopeStr, err := json.Marshal(envelope)
 	CHECK(err)
-	if client.Abort {
-		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
-	} else {
-		fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(input))
-	}
+	//if client.Abort {
+	//	fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
+	//} else {
+	//	fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(input))
+	//}
 	return envelopeStr
 }
 
@@ -682,11 +682,11 @@ outer:
 	}
 
 	if ln != nil {
-		fmt.Println(client.Tid, "- Wait for result.")
+		//fmt.Println(client.Tid, "- Wait for result.")
 		c, err := ln.Accept()
 
 		if err != nil {
-			fmt.Errorf("error. ", err)
+			panic(err)
 		}
 
 		defer c.Close()
