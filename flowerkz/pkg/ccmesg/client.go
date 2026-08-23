@@ -152,6 +152,12 @@ func (c *MeshGoClient) WaitForMessages2(fromlist []string) {
 	CHECK(err)
 	caddr := lip[0].String() + ":" + strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)
 
+	for _, s := range fromlist {
+		if _, ok := c.received[s]; !ok {
+			c.received[s] = false
+		}
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/function/"+c.Fname, http.HandlerFunc(
 		func(rw http.ResponseWriter, r *http.Request) {
@@ -170,10 +176,6 @@ func (c *MeshGoClient) WaitForMessages2(fromlist []string) {
 		Handler: mux,
 	}
 
-	for _, s := range fromlist {
-		c.received[s] = false
-	}
-
 	servErrCh := make(chan error, 1)
 
 	go func() {
@@ -182,7 +184,9 @@ func (c *MeshGoClient) WaitForMessages2(fromlist []string) {
 
 	c.subscribe(caddr)
 
+	fmt.Println("Waiting for the end...")
 	<-c.interChan
+	fmt.Println("completed!")
 
 	c.server.Close()
 	<-servErrCh
@@ -191,10 +195,6 @@ func (c *MeshGoClient) WaitForMessages2(fromlist []string) {
 // todo: change to a condition variable
 func (c *MeshGoClient) WaitForMessages(fromlist []string) error {
 	received := make(map[string]bool)
-
-	for _, p := range fromlist {
-		received[p] = false
-	}
 
 	timeout := time.After(10 * time.Second)
 	var out bool
@@ -329,7 +329,7 @@ func (c *MeshGoClient) recv(envelope Envelope) {
 }
 
 func (c *MeshGoClient) deliver(envelope Envelope) {
-	//fmt.Println("Delivering ", envelope)
+	fmt.Println("Delivering ", envelope)
 	c.mu.Lock()
 	c.Delivered = append(c.Delivered, envelope)
 
@@ -487,6 +487,7 @@ func (c *MeshGoClient) OpenEnvelope(envelope Envelope) {
 	c.Writes = envelope.Writes
 	c.Workload = envelope.Workload
 	c.Delivered = append(c.Delivered, envelope) // maybe too much data
+	c.received[envelope.Fname] = true
 	c.mu.Unlock()
 }
 
