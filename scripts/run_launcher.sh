@@ -38,6 +38,9 @@ fi
 
 export NIGHTCORE_GW_ADDR=$3
 
+ulimit -n 1000000
+echo 1024 65535 > /proc/sys/net/ipv4/ip_local_port_range
+
 $NIGHTCORE_ROOT/bin/release/launcher \
     --func_id=$func_id --fprocess_mode=$fprocess_mode \
     --fprocess_output_dir=$BASE_DIR/outputs \
