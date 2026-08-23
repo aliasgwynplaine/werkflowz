@@ -49,7 +49,7 @@ type MeshGoClient struct {
 	Buffer    []Envelope
 	Delivered []Envelope
 	received  map[string]bool
-	ReturnAdr string
+	ReturnAdr string `json:"return"`
 	interChan chan struct{}
 	/* causalmesh tcc */
 	Workload []map[string]interface{} `json:"workload"`
@@ -525,6 +525,7 @@ func (c *MeshGoClient) OpenEnvelope(envelope Envelope) {
 	c.Workload = envelope.Workload
 	c.Delivered = append(c.Delivered, envelope) // maybe too much data
 	c.received[envelope.Fname] = true
+	c.ReturnAdr = envelope.ReturnAdr
 	c.mu.Unlock()
 }
 
@@ -576,9 +577,9 @@ outer:
 			switch k {
 			case "T":
 				client.InitTxn()
-				ln, err := net.Listen("tcp", ":0")
+				var err error
+				ln, err = net.Listen("tcp", ":0")
 				CHECK(err)
-				defer ln.Close()
 				lip, err := GetLocalIPv4()
 				CHECK(err)
 				caddr := lip[0].String() + ":" + strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)
@@ -640,9 +641,9 @@ outer:
 				payload[nb] = append(payload[nb], workload[i:]...)
 				client.Workload = payload[nb]
 				if rand.IntN(2) == 1 {
-					client.SendMessageSync(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+					client.SendMessage(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 				} else {
-					client.SendMessageSync(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+					client.SendMessage(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 				}
 
 				break outer
@@ -681,6 +682,7 @@ outer:
 	}
 
 	if ln != nil {
+		fmt.Println(client.Tid, "- Wait for result.")
 		c, err := ln.Accept()
 
 		if err != nil {
@@ -691,6 +693,7 @@ outer:
 		buf := make([]byte, 32)
 		_, err = c.Read(buf)
 		CHECK(err)
+		ln.Close()
 	}
 
 	return nil
