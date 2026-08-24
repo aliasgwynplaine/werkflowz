@@ -760,6 +760,7 @@ outer:
 
 				if box, ok := magicBox.box[client.Tid]; ok {
 					box.mu.Lock()
+					fmt.Println(client.Tid, "- caja: ", box.buf)
 
 					if box.append(client.Writes) {
 						fmt.Println(client.Tid, "box completed!")
