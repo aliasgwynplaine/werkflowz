@@ -119,12 +119,13 @@ func (c *MeshGoClient) SendMessageHashed(to string, v string, direct bool) error
 
 	invokeurl := "http://" + host + "/function/" + to
 	message := Envelope{
-		Tid:      c.Tid,
-		Fname:    c.Fname,
-		Payload:  v,
-		Deps:     c.Deps,
-		Writes:   c.Writes,
-		Workload: c.Workload,
+		Tid:       c.Tid,
+		Fname:     c.Fname,
+		Payload:   v,
+		Deps:      c.Deps,
+		Writes:    c.Writes,
+		Workload:  c.Workload,
+		ReturnAdr: c.ReturnAdr,
 	}
 	data, err := json.Marshal(message)
 	CHECK(err)
