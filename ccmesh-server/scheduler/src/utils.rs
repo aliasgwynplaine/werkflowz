@@ -131,3 +131,34 @@ pub async fn send_req(nightcore_idx: usize, req: String, uri: &str) -> Bytes {
     let resp = client.request(r).await.unwrap();
     hyper::body::to_bytes(resp.into_body()).await.unwrap()
 }
+
+
+pub async fn send_req_c(req: String, uri: &str) -> Bytes {
+    let nightcore;
+    if uri == "Entry" {
+        if rand::random() {
+            nightcore =
+                "http://".to_owned() + &GATEWAY.to_owned() + "/function/Entry1";
+        } else {
+            nightcore =
+                "http://".to_owned() + &GATEWAY.to_owned() + "/function/Entry2";
+        }
+    } else {
+        nightcore =
+            "http://".to_owned() + &GATEWAY.to_owned() + "/function/" + uri;
+    }
+
+    println!("uri: {}", nightcore);
+
+    let r = hyper::Request::builder()
+        .method(hyper::Method::POST)
+        .uri(nightcore)
+        .header("content-type", "application/json")
+        // .header("Connection", "close")
+        .body(hyper::Body::from(req))
+        .unwrap();
+    // let client = hyper::Client::new();
+    let client = GCLIENT.with(|c| c.clone());
+    let resp = client.request(r).await.unwrap();
+    hyper::body::to_bytes(resp.into_body()).await.unwrap()
+}
