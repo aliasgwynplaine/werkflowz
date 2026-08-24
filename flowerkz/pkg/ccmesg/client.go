@@ -756,7 +756,7 @@ outer:
 				//}
 
 				magicBox.mu.Lock()
-				fmt.Println(client.Tid, "- unlocked!")
+				fmt.Println(client.Tid, "- locked!")
 
 				if box, ok := magicBox.box[client.Tid]; ok {
 					fmt.Println(client.Tid, "- caja: ", box.buf)
@@ -775,9 +775,7 @@ outer:
 					magicBox.box[client.Tid] = newCaja(int(v.(float64)))
 					fmt.Println(client.Tid, "new box!")
 					box = magicBox.box[client.Tid]
-					box.mu.Lock()
 					box.append(client.Writes)
-					box.mu.Unlock()
 					magicBox.mu.Unlock()
 					return nil
 				}
