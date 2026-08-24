@@ -145,7 +145,7 @@ func (c *MeshGoClient) SendMessageHashed(to string, v string, direct bool) error
 		response.Body.Close()
 	}()
 
-	fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
+	//fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
 
 	return nil
 }
@@ -218,7 +218,7 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 		response.Body.Close()
 	}()
 
-	fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
+	//fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
 
 	return nil
 }
@@ -635,17 +635,17 @@ func Run(input []byte) []byte {
 	InitRPCClient(client)
 
 	client.OpenEnvelope(envelope)
-	fmt.Println(client.Tid, "- Init Execution - inputstr: ", string(input))
+	//fmt.Println(client.Tid, "- Init Execution - inputstr: ", string(input))
 	client.Execute()
 	// todo erase workload to avoid unnecessary serialization
 	envelope.Abort = client.Abort
 	envelopeStr, err := json.Marshal(envelope)
 	CHECK(err)
-	if client.Abort {
-		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
-	} else {
-		fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(input))
-	}
+	//if client.Abort {
+	//	fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
+	//} else {
+	//	fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(input))
+	//}
 	return envelopeStr
 }
 
@@ -746,7 +746,7 @@ outer:
 				client.SendMessageHashed("Sink", "Sink", true)
 				return nil
 			case "I":
-				fmt.Println(client.Tid, "- FANIN")
+				//fmt.Println(client.Tid, "- FANIN")
 				//var fromlist []string
 				//for j := 0; j < int(v.(float64)); j++ {
 				//	fromlist = append(fromlist, fmt.Sprintf("fux_%d", j))
@@ -757,7 +757,7 @@ outer:
 				//}
 
 				magicBox.mu.Lock()
-				fmt.Println(client.Tid, "- locked!")
+				//fmt.Println(client.Tid, "- locked!")
 
 				if box, ok := magicBox.box[client.Tid]; ok {
 					fmt.Println(client.Tid, "- caja: ", box.buf)
@@ -774,7 +774,7 @@ outer:
 					}
 				} else {
 					magicBox.box[client.Tid] = newCaja(int(v.(float64)))
-					fmt.Println(client.Tid, "new box!")
+					//fmt.Println(client.Tid, "new box!")
 					box = magicBox.box[client.Tid]
 					box.append(client.Writes)
 					magicBox.mu.Unlock()
