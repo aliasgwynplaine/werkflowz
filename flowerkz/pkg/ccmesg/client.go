@@ -519,7 +519,7 @@ func (client *MeshGoClient) Read(k string) string {
 	return res.Value
 }
 
-func (client *MeshGoClient) CommitTxn() {
+func (client *MeshGoClient) CommitTxn2() {
 	//fmt.Println(client.Tid, "- Commit Txn ----", client.Deps, client.Writes)
 	depsStr, err := json.Marshal(client.Deps)
 	CHECK(err)
@@ -541,6 +541,30 @@ func (client *MeshGoClient) CommitTxn() {
 	//defer conn.Close()
 	//_, err = conn.Write([]byte("COMMIT " + client.Tid + "\n"))
 	//CHECK(err)
+}
+
+func (client *MeshGoClient) CommitTxn() {
+	//fmt.Println(client.Tid, "- Commit Txn ----", client.Deps, client.Writes)
+	depsStr, err := json.Marshal(client.Deps)
+	CHECK(err)
+	writesStr, err := json.Marshal(client.Writes)
+	CHECK(err)
+	_, err = (*client.Rpcc).ClientCommitTxn(context.Background(), &ClientCommitTxnRequest{Deps: string(depsStr), Writes: string(writesStr)})
+
+	if err != nil {
+		client.Abort = true
+	}
+
+	if client.Tid == "" {
+		//fmt.Println("This is a solo buddy... returning")
+		return
+	}
+
+	conn, err := net.Dial("tcp", NIGHTCORE_GW_ADDR+":"+SNITCH_PORT)
+	CHECK(err)
+	defer conn.Close()
+	_, err = conn.Write([]byte("COMMIT " + client.Tid + "\n"))
+	CHECK(err)
 }
 
 func (client *MeshGoClient) Write(k string, v string) {
@@ -650,6 +674,119 @@ func Run(input []byte) []byte {
 }
 
 func (client *MeshGoClient) Execute() []byte {
+	if client.Writes == nil || client.Deps == nil {
+		panic("client not init")
+	}
+	//fmt.Println(client.Tid, " executing workload -> ", client.Workload)
+	workload := client.Workload
+outer:
+	for i := 0; i < len(workload); i++ {
+		op := workload[i]
+
+		if len(op) != 1 {
+			panic("op is not 1")
+		}
+
+		for k, v := range op {
+			switch k {
+			case "R":
+				//fmt.Println("READ")
+				res := client.Read(v.(string))
+				if res == "None" {
+					client.Abort = true
+					break outer
+				}
+			case "W":
+				//fmt.Println("WRITE")
+				vs := v.([]interface{})
+				client.Write(vs[0].(string), vs[1].(string))
+			case "O":
+				//fmt.Println(client.Tid, "- FANOUT")
+				// handle fanout
+				client.InitTxn()
+				grado := int(v.(float64))
+				payload := make([][]map[string]interface{}, grado)
+				i++
+
+				for nb := 0; nb < grado; i++ {
+					nextop := workload[i]
+
+					if len(nextop) != 1 {
+						panic("len is not 1 uu")
+					}
+
+					ready := false
+
+					for kk, _ := range nextop { // this is not a loop
+						payload[nb] = append(payload[nb], nextop)
+
+						if kk == "J" {
+							ready = true
+						}
+					}
+
+					if ready {
+						nb++
+					}
+				}
+
+				//fmt.Println(client.Tid, "- WoRKLOADDDDD:::: -> ", workload[i:])
+
+				for nb := 0; nb < grado-1; nb++ {
+					payload[nb] = append(payload[nb], workload[i:]...)
+					client.Workload = payload[nb]
+					if rand.IntN(2) == 1 {
+						client.SendMessage(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+					} else {
+						client.SendMessage(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+					}
+				}
+
+				nb := grado - 1
+				payload[nb] = append(payload[nb], workload[i:]...)
+				client.Workload = payload[nb]
+
+				if rand.IntN(2) == 1 {
+					client.SendMessageSync(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+				} else {
+					client.SendMessageSync(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+				}
+
+				return nil
+			case "J":
+				//fmt.Println(client.Tid, "-", client.Fname, "- JOIN")
+				// prepare workload
+				i++
+				client.Workload = client.Workload[i:]
+				client.SendMessage("Sink", "Sink", false)
+				return nil
+			case "I":
+				//fmt.Println(client.Tid, "- FANIN")
+				// handle fanin
+				//client.InitMailBoxService()
+
+				var fromlist []string
+
+				for j := 0; j < int(v.(float64)); j++ {
+					fromlist = append(fromlist, fmt.Sprintf("fux_%d", j))
+				}
+
+				client.WaitForMessages2(fromlist)
+
+				if client.Abort {
+					return nil
+				}
+			case "C":
+				client.CommitTxn()
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func (client *MeshGoClient) Execute2() []byte {
 	if client.Writes == nil || client.Deps == nil {
 		panic("client not init")
 	}
