@@ -1,0 +1,9 @@
+{
+    "NB_NODES": 3,
+    "fprocess_mode": "go",
+    "fuxmap": [
+        "Entry1",
+        "Entry2",
+	"Sink"
+    ]
+}

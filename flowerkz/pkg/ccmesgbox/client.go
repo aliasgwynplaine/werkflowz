@@ -1,4 +1,4 @@
-package ccmesg
+package ccmesgbox
 
 import (
 	"bytes"
@@ -22,7 +22,6 @@ import (
 )
 
 var NIGHTCORE_GW_ADDR = os.Getenv("NIGHTCORE_GW_ADDR")
-var SNITCH_PORT = "46655"
 
 var RPCC *MeshClient = nil
 

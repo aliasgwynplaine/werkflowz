@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v3.15.8
-// source: ccmesg.proto
+// source: ccmesgbox.proto
 
-package ccmesg
+package ccmesgbox
 
 import (
 	context "context"
@@ -20,12 +20,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Mesh_HealthCheck_FullMethodName     = "/ccmesg.Mesh/HealthCheck"
-	Mesh_ClientRead_FullMethodName      = "/ccmesg.Mesh/ClientRead"
-	Mesh_ClientWrite_FullMethodName     = "/ccmesg.Mesh/ClientWrite"
-	Mesh_ServerWrite_FullMethodName     = "/ccmesg.Mesh/ServerWrite"
-	Mesh_ClientCommitTxn_FullMethodName = "/ccmesg.Mesh/ClientCommitTxn"
-	Mesh_ServerCommitTxn_FullMethodName = "/ccmesg.Mesh/ServerCommitTxn"
+	Mesh_HealthCheck_FullMethodName     = "/ccmesgbox.Mesh/HealthCheck"
+	Mesh_ClientRead_FullMethodName      = "/ccmesgbox.Mesh/ClientRead"
+	Mesh_ClientWrite_FullMethodName     = "/ccmesgbox.Mesh/ClientWrite"
+	Mesh_ServerWrite_FullMethodName     = "/ccmesgbox.Mesh/ServerWrite"
+	Mesh_ClientCommitTxn_FullMethodName = "/ccmesgbox.Mesh/ClientCommitTxn"
+	Mesh_ServerCommitTxn_FullMethodName = "/ccmesgbox.Mesh/ServerCommitTxn"
 )
 
 // MeshClient is the client API for Mesh service.
@@ -279,7 +279,7 @@ func _Mesh_ServerCommitTxn_Handler(srv interface{}, ctx context.Context, dec fun
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Mesh_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ccmesg.Mesh",
+	ServiceName: "ccmesgbox.Mesh",
 	HandlerType: (*MeshServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -308,5 +308,5 @@ var Mesh_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "ccmesg.proto",
+	Metadata: "ccmesgbox.proto",
 }

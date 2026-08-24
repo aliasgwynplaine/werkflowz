@@ -2,8 +2,8 @@ syntax = "proto3";
 
 import "google/protobuf/empty.proto";
 
-option go_package = "github.com/eniac/ccmesg";
-package ccmesg;
+option go_package = "github.com/eniac/ccmesgbox";
+package ccmesgbox;
 
 service Mesh {
   rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse) {}
