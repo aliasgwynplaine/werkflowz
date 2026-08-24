@@ -130,17 +130,19 @@ func (c *MeshGoClient) SendMessageHashed(to string, v string, direct bool) error
 	CHECK(err)
 	output := bytes.NewBuffer(data)
 
-	//http.DefaultClient.Timeout = 1 * time.Second
+	go func() {
+		//http.DefaultClient.Timeout = 1 * time.Second
 
-	response, err := http.Post(invokeurl, "*/*", output) // invokation
+		response, err := http.Post(invokeurl, "*/*", output) // invokation
 
-	if err != nil {
-		//fmt.Println(c.Tid, "-", c.Fname, "- returning uu ", err)
-		return err
-	}
+		if err != nil {
+			//fmt.Println(c.Tid, "-", c.Fname, "- returning uu ", err)
+			return
+		}
 
-	//fmt.Println(c.Tid, "-", c.Fname, "- response: ", response)
-	response.Body.Close()
+		//fmt.Println(c.Tid, "-", c.Fname, "- response: ", response)
+		response.Body.Close()
+	}()
 
 	fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
 
@@ -632,17 +634,17 @@ func Run(input []byte) []byte {
 	InitRPCClient(client)
 
 	client.OpenEnvelope(envelope)
-	//fmt.Println(client.Tid, "- Init Execution - inputstr: ", string(input))
+	fmt.Println(client.Tid, "- Init Execution - inputstr: ", string(input))
 	client.Execute()
 	// todo erase workload to avoid unnecessary serialization
 	envelope.Abort = client.Abort
 	envelopeStr, err := json.Marshal(envelope)
 	CHECK(err)
-	//if client.Abort {
-	//	fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
-	//} else {
-	//	fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(input))
-	//}
+	if client.Abort {
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
+	} else {
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(input))
+	}
 	return envelopeStr
 }
 
