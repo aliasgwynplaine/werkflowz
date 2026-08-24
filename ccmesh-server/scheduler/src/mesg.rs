@@ -1,4 +1,5 @@
 use crate::utils::*;
+use hz_config::*;
 use hyper::{Body, Request, Response};
 use ccmesg::goclient::Envelope;
 use std::convert::Infallible;
@@ -10,7 +11,8 @@ pub async fn mesg_service(_req: Request<Body>) -> Result<Response<Body>, Infalli
     
     loop {
         let req = serde_json::to_string(&e).unwrap();
-        let res = send_req(0, req, "Entry").await;
+        let idx = rand::random::<usize>() % T;
+        let res = send_req(idx, req, "Entry").await;
         let res_e = serde_json::from_slice::<Envelope>(&res).unwrap();
         
         if res_e.abort {

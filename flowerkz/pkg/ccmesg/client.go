@@ -142,7 +142,7 @@ func (c *MeshGoClient) SendMessageHashed(to string, v string, direct bool) error
 	//fmt.Println(c.Tid, "-", c.Fname, "- response: ", response)
 	response.Body.Close()
 
-	//fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
+	fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
 
 	return nil
 }
@@ -215,7 +215,7 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 		response.Body.Close()
 	}()
 
-	//fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
+	fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
 
 	return nil
 }
@@ -719,9 +719,9 @@ outer:
 					payload[nb] = append(payload[nb], workload[i:]...)
 					client.Workload = payload[nb]
 					if rand.IntN(2) == 1 {
-						client.SendMessage(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+						client.SendMessageHashed(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 					} else {
-						client.SendMessage(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+						client.SendMessageHashed(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 					}
 				}
 
@@ -729,9 +729,9 @@ outer:
 				payload[nb] = append(payload[nb], workload[i:]...)
 				client.Workload = payload[nb]
 				if rand.IntN(2) == 1 {
-					client.SendMessage(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+					client.SendMessageHashed(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 				} else {
-					client.SendMessage(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+					client.SendMessageHashed(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
 				}
 
 				break outer
@@ -740,10 +740,10 @@ outer:
 				// prepare workload
 				i++
 				client.Workload = client.Workload[i:]
-				client.SendMessage("Sink", "Sink", true)
+				client.SendMessageHashed("Sink", "Sink", true)
 				return nil
 			case "I":
-				//fmt.Println(client.Tid, "- FANIN")
+				fmt.Println(client.Tid, "- FANIN")
 				//var fromlist []string
 				//for j := 0; j < int(v.(float64)); j++ {
 				//	fromlist = append(fromlist, fmt.Sprintf("fux_%d", j))
@@ -760,6 +760,7 @@ outer:
 					box.mu.Lock()
 
 					if box.append(client.Writes) {
+						fmt.Println(client.Tid, "box completed!")
 						client.Writes = box.getWrites()
 						box.mu.Unlock()
 						delete(magicBox.box, client.Tid)
@@ -770,6 +771,8 @@ outer:
 					}
 				} else {
 					magicBox.box[client.Tid] = newCaja(int(v.(float64)))
+					fmt.Println(client.Tid, "new box!")
+					box = magicBox.box[client.Tid]
 					box.mu.Lock()
 					box.append(client.Writes)
 					box.mu.Unlock()
