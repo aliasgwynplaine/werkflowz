@@ -32,7 +32,7 @@ pub async fn mesh_service_c(_req: Request<Body>) -> Result<Response<Body>, Infal
         c.workload = workloads.pop_front().unwrap();
         let req = serde_json::to_string(&c).unwrap();
         let idx = rand::random::<usize>() % T;
-        let res = send_req(idx, req, "Entry").await;
+        let res = send_req_c(req, "Entry").await;
         let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
 
         if res_c.abort {
@@ -51,7 +51,7 @@ pub async fn mesh_service_c(_req: Request<Body>) -> Result<Response<Body>, Infal
                 let req = requests.pop().unwrap();
                 async move {
                     let idx = rand::random::<usize>() % T;
-                    let res = send_req(idx, req, "Entry").await;
+                    let res = send_req_c(req, "Entry").await;
                     let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
                     res_c
                 }
@@ -60,7 +60,7 @@ pub async fn mesh_service_c(_req: Request<Body>) -> Result<Response<Body>, Infal
                 let req = requests.pop().unwrap();
                 async move {
                     let idx = rand::random::<usize>() % T;
-                    let res = send_req(idx, req, "Entry").await;
+                    let res = send_req_c(req, "Entry").await;
                     let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
                     res_c
                 }
@@ -76,7 +76,7 @@ pub async fn mesh_service_c(_req: Request<Body>) -> Result<Response<Body>, Infal
             {
                 let req = requests.pop().unwrap();
                 async move {
-                    let res = send_req(idx, req, "Entry").await;
+                    let res = send_req_c(req, "Entry").await;
                     let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
                     res_c
                 }
