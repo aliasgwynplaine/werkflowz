@@ -12,7 +12,9 @@ usage () {
 	echo "	upload <file> <host>"
 	echo "	upload-to-hosts <file> <file.host>"
 	echo "	run-gateway <gateway.host> <experiment-name>"
+	echo "	run-snitch <gateway.host>"
 	echo "	kill-gateway <gateway.host>"
+	echo "	kill-snitch <gateway.host>"
 	echo "	run-engines <workers.host> <experiment-name> <gateway.host>"
 	echo "	kill-all-engines <workers.host>"
 	echo "	run-launcher <worker> <expriment-name> <func_id> <gateway.host>"
@@ -40,6 +42,7 @@ show-experiments() {
 	echo "	tccverifier-ccmesh"
 	echo "  micro-ccmesh"
 	echo "  micro-ccmesg"
+	echo "  micro-ccmesg-box"
 	echo
 }
 
@@ -72,6 +75,9 @@ verify-experiment() {
 			return 0
 			;;
 		micro-ccmesg)
+			return 0
+			;;
+		micro-ccmesg-box)
 			return 0
 			;;
 		*)
@@ -127,6 +133,22 @@ upload-to-hosts)
 	bash upload_to_hosts.sh $2 $3
 	;;
 
+run-snitch)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 1
+	fi
+
+	if [ ! -f "$2" ]; then
+		echo "file not found: $2"
+		exit 127
+	fi
+
+	mapfile -t gw < $2
+	bash remote_exec.sh $gw run_snitch.sh
+	sleep 1
+	;;
+
 run-gateway)
 	if [ $# -ne 3 ]; then
 		usage
@@ -141,7 +163,6 @@ run-gateway)
 	verify-experiment $3
 	mapfile -t gw < $2
 	bash remote_exec.sh $gw run_gateway.sh $3
-	bash remote_exec.sh $gw run_snitch.sh $3
 	sleep 1
 	;;
 
@@ -153,6 +174,16 @@ kill-gateway)
 
 	mapfile -t gw < $2
 	ssh root@$gw 'pgrep gateway && killall gateway; exit 0'
+	ssh root@$gw 'pgrep snitch && killall snitch; exit 0'
+	;;
+
+kill-snitch)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 2
+	fi
+
+	mapfile -t gw < $2
 	ssh root@$gw 'pgrep snitch && killall snitch; exit 0'
 	;;
 
