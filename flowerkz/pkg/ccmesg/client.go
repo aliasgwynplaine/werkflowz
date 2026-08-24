@@ -535,11 +535,11 @@ func (client *MeshGoClient) CommitTxn() {
 		return
 	}
 
-	conn, err := net.Dial("tcp", NIGHTCORE_GW_ADDR+":"+SNITCH_PORT)
-	CHECK(err)
-	defer conn.Close()
-	_, err = conn.Write([]byte("COMMIT " + client.Tid + "\n"))
-	CHECK(err)
+	//conn, err := net.Dial("tcp", NIGHTCORE_GW_ADDR+":"+SNITCH_PORT)
+	//CHECK(err)
+	//defer conn.Close()
+	//_, err = conn.Write([]byte("COMMIT " + client.Tid + "\n"))
+	//CHECK(err)
 }
 
 func (client *MeshGoClient) Write(k string, v string) {
@@ -791,7 +791,7 @@ outer:
 	}
 
 	if ln != nil {
-		//fmt.Println(client.Tid, "- Wait for result.")
+		fmt.Println(client.Tid, "- Wait for result.")
 		c, err := ln.Accept()
 
 		if err != nil {
