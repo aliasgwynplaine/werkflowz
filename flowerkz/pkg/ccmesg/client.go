@@ -756,20 +756,18 @@ outer:
 				//}
 
 				magicBox.mu.Lock()
+				fmt.Println(client.Tid, "- unlocked!")
 
 				if box, ok := magicBox.box[client.Tid]; ok {
-					box.mu.Lock()
 					fmt.Println(client.Tid, "- caja: ", box.buf)
 
 					if box.append(client.Writes) {
 						fmt.Println(client.Tid, "box completed!")
 						client.Writes = box.getWrites()
-						box.mu.Unlock()
 						delete(magicBox.box, client.Tid)
 						magicBox.mu.Unlock()
 						continue
 					} else {
-						box.mu.Unlock()
 						magicBox.mu.Unlock()
 						return nil
 					}
