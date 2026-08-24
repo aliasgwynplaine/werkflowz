@@ -756,7 +756,6 @@ outer:
 				//}
 
 				magicBox.mu.Lock()
-				defer magicBox.mu.Unlock()
 
 				if box, ok := magicBox.box[client.Tid]; ok {
 					box.mu.Lock()
@@ -767,9 +766,11 @@ outer:
 						client.Writes = box.getWrites()
 						box.mu.Unlock()
 						delete(magicBox.box, client.Tid)
+						magicBox.mu.Unlock()
 						continue
 					} else {
 						box.mu.Unlock()
+						magicBox.mu.Unlock()
 						return nil
 					}
 				} else {
@@ -779,6 +780,7 @@ outer:
 					box.mu.Lock()
 					box.append(client.Writes)
 					box.mu.Unlock()
+					magicBox.mu.Unlock()
 					return nil
 				}
 			case "C":
