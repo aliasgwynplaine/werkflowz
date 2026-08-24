@@ -26,6 +26,55 @@ var SNITCH_PORT = "46655"
 
 var RPCC *MeshClient = nil
 
+var magicBox = wrapper{
+	box: make(map[string]*caja),
+}
+
+type wrapper struct {
+	mu  sync.Mutex
+	box map[string]*caja
+}
+
+type caja struct {
+	nb  int
+	mu  sync.Mutex
+	buf []map[string]string
+}
+
+func newCaja(nb int) *caja {
+	return &caja{
+		nb:  nb,
+		buf: make([]map[string]string, 0, nb),
+	}
+}
+
+func (c *caja) append(wr map[string]string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.buf = append(c.buf, wr)
+
+	if len(c.buf) == c.nb {
+		return true
+	}
+
+	return false
+}
+
+func (c *caja) getWrites() map[string]string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	writes := make(map[string]string)
+
+	for _, e := range c.buf {
+		for k, v := range e {
+			writes[k] = v // TODO: conflict check
+		}
+	}
+
+	return writes
+}
+
 type Envelope struct {
 	Tid       string                   `json:"tid"`
 	Fname     string                   `json:"fname"`
@@ -46,7 +95,6 @@ type MeshGoClient struct {
 	Fname     string `json:"fname"`
 	ServerId  string `json:"serverid"`
 	Payload   string `json:"payload"`
-	Buffer    []Envelope
 	Delivered []Envelope
 	received  map[string]bool
 	ReturnAdr string `json:"return"`
@@ -57,6 +105,46 @@ type MeshGoClient struct {
 	Deps     map[string]VC            `json:"deps"`
 	Input    string                   `json:"input"`
 	Abort    bool                     `json:"abort"`
+}
+
+func (c *MeshGoClient) SendMessageHashed(to string, v string, direct bool) error {
+	//fmt.Println(c.Tid, "-", c.Fname, " asking for ", to)
+	host := GetHost(c.Tid, to)
+
+	if direct {
+		host = host + ":8080"
+	} else {
+		host = host + ":" + SNITCH_PORT
+	}
+
+	invokeurl := "http://" + host + "/function/" + to
+	message := Envelope{
+		Tid:      c.Tid,
+		Fname:    c.Fname,
+		Payload:  v,
+		Deps:     c.Deps,
+		Writes:   c.Writes,
+		Workload: c.Workload,
+	}
+	data, err := json.Marshal(message)
+	CHECK(err)
+	output := bytes.NewBuffer(data)
+
+	//http.DefaultClient.Timeout = 1 * time.Second
+
+	response, err := http.Post(invokeurl, "*/*", output) // invokation
+
+	if err != nil {
+		//fmt.Println(c.Tid, "-", c.Fname, "- returning uu ", err)
+		return err
+	}
+
+	//fmt.Println(c.Tid, "-", c.Fname, "- response: ", response)
+	response.Body.Close()
+
+	//fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
+
+	return nil
 }
 
 func (c *MeshGoClient) SendMessageSync(to string, v string, direct bool) error {
@@ -366,7 +454,7 @@ func (c *MeshGoClient) recv(envelope Envelope) {
 }
 
 func (c *MeshGoClient) deliver(envelope Envelope) {
-	fmt.Println("Delivering ", envelope)
+	//fmt.Println("Delivering ", envelope)
 	c.mu.Lock()
 	c.Delivered = append(c.Delivered, envelope)
 
@@ -652,22 +740,39 @@ outer:
 				// prepare workload
 				i++
 				client.Workload = client.Workload[i:]
-				client.SendMessage("Sink", "Sink", false)
+				client.SendMessage("Sink", "Sink", true)
 				return nil
 			case "I":
 				//fmt.Println(client.Tid, "- FANIN")
-				// handle fanin
-				//client.InitMailBoxService()
+				//var fromlist []string
+				//for j := 0; j < int(v.(float64)); j++ {
+				//	fromlist = append(fromlist, fmt.Sprintf("fux_%d", j))
+				//}
+				//client.WaitForMessages2(fromlist)
+				//if client.Abort {
+				//	return nil
+				//}
 
-				var fromlist []string
+				magicBox.mu.Lock()
+				defer magicBox.mu.Unlock()
 
-				for j := 0; j < int(v.(float64)); j++ {
-					fromlist = append(fromlist, fmt.Sprintf("fux_%d", j))
-				}
+				if box, ok := magicBox.box[client.Tid]; ok {
+					box.mu.Lock()
 
-				client.WaitForMessages2(fromlist)
-
-				if client.Abort {
+					if box.append(client.Writes) {
+						client.Writes = box.getWrites()
+						box.mu.Unlock()
+						delete(magicBox.box, client.Tid)
+						continue
+					} else {
+						box.mu.Unlock()
+						return nil
+					}
+				} else {
+					magicBox.box[client.Tid] = newCaja(int(v.(float64)))
+					box.mu.Lock()
+					box.append(client.Writes)
+					box.mu.Unlock()
 					return nil
 				}
 			case "C":

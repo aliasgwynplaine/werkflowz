@@ -104,17 +104,17 @@ pub async fn send_req(nightcore_idx: usize, req: String, uri: &str) -> Bytes {
     if uri == "Entry" {
         if rand::random() {
             nightcore =
-                //"http://".to_owned() + &NIGHTCORES[nightcore_idx].to_owned() + "/function/Entry1";
-                "http://".to_owned() + &GATEWAY.to_owned() + "/function/Entry1";
+                "http://".to_owned() + &NIGHTCORES[nightcore_idx].to_owned() + "/function/Entry1";
+                //"http://".to_owned() + &GATEWAY.to_owned() + "/function/Entry1";
         } else {
             nightcore =
-                //"http://".to_owned() + &NIGHTCORES[nightcore_idx].to_owned() + "/function/Entry2";
-                "http://".to_owned() + &GATEWAY.to_owned() + "/function/Entry2";
+                "http://".to_owned() + &NIGHTCORES[nightcore_idx].to_owned() + "/function/Entry2";
+                //"http://".to_owned() + &GATEWAY.to_owned() + "/function/Entry2";
         }
     } else {
         nightcore =
-            //"http://".to_owned() + &NIGHTCORES[nightcore_idx].to_owned() + "/function/" + uri;
-            "http://".to_owned() + &GATEWAY.to_owned() + "/function/" + uri;
+            "http://".to_owned() + &NIGHTCORES[nightcore_idx].to_owned() + "/function/" + uri;
+            //"http://".to_owned() + &GATEWAY.to_owned() + "/function/" + uri;
     }
 
     println!("uri: {}", nightcore);
