@@ -26,6 +26,55 @@ var SNITCH_PORT = "46655"
 
 var RPCC *MeshClient = nil
 
+var magicBox = wrapper{
+	box: make(map[string]*caja),
+}
+
+type wrapper struct {
+	mu  sync.Mutex
+	box map[string]*caja
+}
+
+type caja struct {
+	nb  int
+	mu  sync.Mutex
+	buf []map[string]string
+}
+
+func newCaja(nb int) *caja {
+	return &caja{
+		nb:  nb,
+		buf: make([]map[string]string, 0, nb),
+	}
+}
+
+func (c *caja) append(wr map[string]string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.buf = append(c.buf, wr)
+
+	if len(c.buf) == c.nb {
+		return true
+	}
+
+	return false
+}
+
+func (c *caja) getWrites() map[string]string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	writes := make(map[string]string)
+
+	for _, e := range c.buf {
+		for k, v := range e {
+			writes[k] = v // TODO: conflict check
+		}
+	}
+
+	return writes
+}
+
 type Envelope struct {
 	Tid       string                   `json:"tid"`
 	Fname     string                   `json:"fname"`
@@ -46,7 +95,6 @@ type MeshGoClient struct {
 	Fname     string `json:"fname"`
 	Payload   string `json:"payload"`
 	ReturnAdr string `json:"return"`
-	received  map[string]bool
 	interChan chan struct{}
 	/* causalmesh tcc */
 	Workload []map[string]interface{} `json:"workload"`
@@ -55,10 +103,46 @@ type MeshGoClient struct {
 	Abort    bool                     `json:"abort"`
 }
 
+func (c *MeshGoClient) SendMessageHashed(to string, v string) error {
+	//fmt.Println(c.Tid, "-", c.Fname, " asking for ", to)
+	host := GetHost(c.Tid, to) + ":8080"
+
+	invokeurl := "http://" + host + "/function/" + to
+	message := Envelope{
+		Tid:       c.Tid,
+		Fname:     c.Fname,
+		Payload:   v,
+		Deps:      c.Deps,
+		Writes:    c.Writes,
+		Workload:  c.Workload,
+		ReturnAdr: c.ReturnAdr,
+	}
+	data, err := json.Marshal(message)
+	CHECK(err)
+	output := bytes.NewBuffer(data)
+
+	go func() {
+		//http.DefaultClient.Timeout = 1 * time.Second
+
+		response, err := http.Post(invokeurl, "*/*", output) // invokation
+
+		if err != nil {
+			//fmt.Println(c.Tid, "-", c.Fname, "- returning uu ", err)
+			return
+		}
+
+		//fmt.Println(c.Tid, "-", c.Fname, "- response: ", response)
+		response.Body.Close()
+	}()
+
+	//fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
+
+	return nil
+}
+
 func (c *MeshGoClient) SendMessageSync(to string, v string, direct bool) error {
 	//fmt.Println(c.Tid, "-", c.Fname, " asking for ", to)
-	addr, err := getAddr(c.Tid, to, direct)
-	CHECK(err)
+	addr := getAddr() + ":8080"
 
 	invokeurl := "http://" + addr + "/function/" + to
 	message := Envelope{
@@ -72,6 +156,8 @@ func (c *MeshGoClient) SendMessageSync(to string, v string, direct bool) error {
 	data, err := json.Marshal(message)
 	CHECK(err)
 	output := bytes.NewBuffer(data)
+
+	//http.DefaultClient.Timeout = 1 * time.Second
 
 	response, err := http.Post(invokeurl, "*/*", output) // invokation
 
@@ -88,10 +174,9 @@ func (c *MeshGoClient) SendMessageSync(to string, v string, direct bool) error {
 	return nil
 }
 
-func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
+func (c *MeshGoClient) SendMessage(to string, v string) error {
 	//fmt.Println(c.Tid, "-", c.Fname, " asking for ", to)
-	addr, err := getAddr(c.Tid, to, direct)
-	CHECK(err)
+	addr := getAddr() + ":8080"
 
 	invokeurl := "http://" + addr + "/function/" + to
 	message := Envelope{
@@ -126,101 +211,11 @@ func (c *MeshGoClient) SendMessage(to string, v string, direct bool) error {
 	return nil
 }
 
-func getAddr(tid string, to string, direct bool) (string, error) {
-	if tid == "" || direct {
-		return NIGHTCORE_GW_ADDR + ":8080", nil
-	}
-	conn, err := net.Dial("tcp", NIGHTCORE_GW_ADDR+":"+SNITCH_PORT)
+func getAddr() string {
+	idx := rand.IntN(T)
+	addr := PEERS[idx]
 
-	if err != nil {
-		return "", err
-	}
-
-	defer conn.Close()
-	//fmt.Println("Sending request ", tid, "for ", to)
-	conn.Write([]byte("GET " + tid + " " + to + "\n"))
-	buf := make([]byte, 256) // todo: hardcoded size
-	n, err := conn.Read(buf)
-
-	if err != nil {
-		return "", err
-	}
-
-	addr := string(buf[:n])
-	//fmt.Println("recvd Addr: ", buf[:n], " -> ", addr)
-
-	return addr, nil
-}
-
-func (c *MeshGoClient) subscribe(addr string) {
-	conn, err := net.Dial("tcp", NIGHTCORE_GW_ADDR+":"+SNITCH_PORT)
-	CHECK(err)
-
-	defer conn.Close()
-
-	payload := "PUT " + c.Tid + " " + c.Fname + " " + addr + "\n"
-	_, err = conn.Write([]byte(payload))
-	CHECK(err)
-	//fmt.Println("sent ", n, " bytes to the snitch...")
-	buf := make([]byte, 32) // todo hardcoded
-	_, err = conn.Read(buf)
-	//fmt.Println("recv'd ", buf[:n], " as response")
-}
-
-func (c *MeshGoClient) WaitForMessages(fromlist []string) {
-	if c.Tid == "" {
-		panic("No TID!")
-	}
-
-	ln, err := net.Listen("tcp", "0.0.0.0:0")
-
-	if err != nil {
-		fmt.Errorf("err:", err)
-		c.Abort = true
-		return
-	}
-
-	lip, err := GetLocalIPv4()
-	CHECK(err)
-	caddr := lip[0].String() + ":" + strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)
-
-	for _, s := range fromlist {
-		if _, ok := c.received[s]; !ok {
-			c.received[s] = false
-		}
-	}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/function/"+c.Fname, http.HandlerFunc(
-		func(rw http.ResponseWriter, r *http.Request) {
-			decoder := json.NewDecoder(r.Body)
-			defer r.Body.Close()
-
-			var envelope Envelope
-			err := decoder.Decode(&envelope)
-			CHECK(err)
-
-			c.recv(envelope)
-		},
-	))
-
-	c.server = &http.Server{
-		Handler: mux,
-	}
-
-	servErrCh := make(chan error, 1)
-
-	go func() {
-		servErrCh <- c.server.Serve(ln)
-	}()
-
-	c.subscribe(caddr)
-
-	<-c.interChan
-	//fmt.Println(c.Tid, " completed!")
-
-	c.server.Close()
-	<-servErrCh
+	return addr
 }
 
 func (c *MeshGoClient) recv(envelope Envelope) {
@@ -264,18 +259,6 @@ func (c *MeshGoClient) deliver(envelope Envelope) {
 		c.Writes[k] = v
 	}
 
-	c.received[envelope.Fname] = true
-
-	completed := true
-
-	for _, r := range c.received {
-		completed = r && completed
-	}
-
-	if completed {
-		close(c.interChan)
-	}
-
 	c.mu.Unlock()
 }
 
@@ -316,17 +299,6 @@ func (client *MeshGoClient) CommitTxn() {
 	if err != nil {
 		client.Abort = true
 	}
-
-	if client.Tid == "" {
-		//fmt.Println("This is a solo buddy... returning")
-		return
-	}
-
-	conn, err := net.Dial("tcp", NIGHTCORE_GW_ADDR+":"+SNITCH_PORT)
-	CHECK(err)
-	defer conn.Close()
-	_, err = conn.Write([]byte("COMMIT " + client.Tid + "\n"))
-	CHECK(err)
 }
 
 func (client *MeshGoClient) Write(k string, v string) {
@@ -385,24 +357,20 @@ func NewMeshGoClient(fname string) *MeshGoClient {
 	client.Writes = make(map[string]string, 0)
 	client.Deps = make(map[string]VC, 0)
 	client.Fname = fname
-	client.received = make(map[string]bool)
 	client.interChan = make(chan struct{})
 
 	return &client
 }
 
 func (c *MeshGoClient) OpenEnvelope(envelope Envelope) {
-	//fmt.Println("Opening envelope with message from ", envelope.Fname)
 	c.mu.Lock()
+
 	c.Tid = envelope.Tid
 	c.Deps = envelope.Deps
-	//fmt.Println("Writes: ", envelope.Writes)
 	c.Writes = envelope.Writes
 	c.Workload = envelope.Workload
-
-	c.received[envelope.Fname] = true
-
 	c.ReturnAdr = envelope.ReturnAdr
+
 	c.mu.Unlock()
 }
 
@@ -410,27 +378,29 @@ func Run(input []byte) []byte {
 	var envelope Envelope
 	err := json.Unmarshal(input, &envelope)
 	CHECK(err)
-
+	//conn, err := grpc.Dial(ADDR, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	//CHECK(err)
+	//
+	//rpcc := NewMeshClient(conn)
+	//var client MeshGoClient
+	//InitClient()
+	//client.Rpcc = RPCC
 	client := NewMeshGoClient(envelope.Payload)
 	InitRPCClient(client)
 
 	client.OpenEnvelope(envelope)
 	//fmt.Println(client.Tid, "- Init Execution - inputstr: ", string(input))
 	client.Execute()
+	// todo erase workload to avoid unnecessary serialization
+	envelope.Abort = client.Abort
+	envelopeStr, err := json.Marshal(envelope)
+	CHECK(err)
 	//if client.Abort {
 	//	fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
 	//} else {
 	//	fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(input))
 	//}
-
-	res := Envelope{
-		Abort: client.Abort,
-	}
-
-	resStr, err := json.Marshal(res)
-	CHECK(err)
-
-	return resStr
+	return envelopeStr
 }
 
 func (client *MeshGoClient) Execute() []byte {
@@ -498,15 +468,16 @@ outer:
 						nb++
 					}
 				}
+
 				//fmt.Println(client.Tid, "- WoRKLOADDDDD:::: -> ", workload[i:])
 
 				for nb := 0; nb < grado; nb++ {
 					payload[nb] = append(payload[nb], workload[i:]...)
 					client.Workload = payload[nb]
 					if rand.IntN(2) == 1 {
-						client.SendMessage(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+						client.SendMessage(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb))
 					} else {
-						client.SendMessage(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb), true)
+						client.SendMessage(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb))
 					}
 				}
 
@@ -516,23 +487,30 @@ outer:
 				// prepare workload
 				i++
 				client.Workload = client.Workload[i:]
-				client.SendMessage("Sink", "Sink", false)
+				client.SendMessageHashed("Sink", "Sink")
 				return nil
 			case "I":
-				//fmt.Println(client.Tid, "- FANIN")
-				// handle fanin
-				var fromlist []string
+				magicBox.mu.Lock()
 
-				for j := 0; j < int(v.(float64)); j++ {
-					fromlist = append(fromlist, fmt.Sprintf("fux_%d", j))
-				}
+				if box, ok := magicBox.box[client.Tid]; ok {
+					fmt.Println(client.Tid, "- caja: ", box.buf)
 
-				client.WaitForMessages(fromlist)
-
-				if client.Abort {
-					conn, err := net.Dial("tcp", client.ReturnAdr)
-					CHECK(err)
-					defer conn.Close()
+					if box.append(client.Writes) {
+						fmt.Println(client.Tid, "box completed!")
+						client.Writes = box.getWrites()
+						delete(magicBox.box, client.Tid)
+						magicBox.mu.Unlock()
+						continue
+					} else {
+						magicBox.mu.Unlock()
+						return nil
+					}
+				} else {
+					magicBox.box[client.Tid] = newCaja(int(v.(float64)))
+					//fmt.Println(client.Tid, "new box!")
+					box = magicBox.box[client.Tid]
+					box.append(client.Writes)
+					magicBox.mu.Unlock()
 					return nil
 				}
 			case "C":
@@ -543,16 +521,14 @@ outer:
 				conn.Write([]byte("Ok"))
 				return nil
 			}
-
 		}
 	}
 
 	if ln != nil {
-		fmt.Println(client.Tid, "- Wait for result.")
 		c, err := ln.Accept()
 
 		if err != nil {
-			fmt.Errorf("error. ", err)
+			panic(err)
 		}
 
 		defer c.Close()
