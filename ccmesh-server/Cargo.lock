@@ -164,6 +164,58 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50d30906286121d95be3d479533b458f87493b30a4b5f79a607db8f5d11aa91f"
 
 [[package]]
+name = "ccmesg"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "either",
+ "flume",
+ "hz-causal",
+ "hz-config",
+ "hz-ipc",
+ "hz-redis",
+ "hz-workload",
+ "once_cell",
+ "prost",
+ "rand",
+ "ringbuffer",
+ "rustc-hash",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tonic",
+ "tonic-build",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "ccmesgbox"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "either",
+ "flume",
+ "hz-causal",
+ "hz-config",
+ "hz-ipc",
+ "hz-redis",
+ "hz-workload",
+ "once_cell",
+ "prost",
+ "rand",
+ "ringbuffer",
+ "rustc-hash",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tonic",
+ "tonic-build",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -648,6 +700,7 @@ dependencies = [
  "hz-config",
  "hz-ipc",
  "hz-redis",
+ "hz-workload",
  "once_cell",
  "prost",
  "redis",
@@ -700,6 +753,7 @@ dependencies = [
  "hz-config",
  "hz-ipc",
  "hz-redis",
+ "hz-workload",
  "once_cell",
  "prost",
  "rand",
@@ -737,6 +791,8 @@ dependencies = [
 name = "hz-server"
 version = "0.1.0"
 dependencies = [
+ "ccmesg",
+ "ccmesgbox",
  "clap",
  "hz-cb",
  "hz-config",
@@ -745,6 +801,18 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "hz-workload"
+version = "0.1.0"
+dependencies = [
+ "hz-config",
+ "rand",
+ "rustc-hash",
+ "serde",
+ "serde_json",
+ "zipf",
 ]
 
 [[package]]
@@ -1399,6 +1467,31 @@ name = "ryu"
 version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f91339c0467de62360649f8d3e185ca8de4224ff281f66000de5eb2a77a79041"
+
+[[package]]
+name = "scheduler"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "ccmesg",
+ "ccmesgbox",
+ "hyper",
+ "hz-causal",
+ "hz-cb",
+ "hz-config",
+ "hz-mesh",
+ "hz-workload",
+ "lazy_static",
+ "rand",
+ "rustc-hash",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tonic",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
 
 [[package]]
 name = "scopeguard"
@@ -2246,4 +2339,13 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "zipf"
+version = "7.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d4e079d30939088cfc89b5318a5d3557d4a92890c917aa40475ea763bd473d5"
+dependencies = [
+ "rand",
 ]

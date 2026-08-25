@@ -19,4 +19,5 @@ serde_json.workspace = true
 default = ["ccmesh"]
 ccmesh = []
 ccmesg = []
+ccmesgbox = []
 cb = []

@@ -3,6 +3,7 @@ use hz_config::*;
 use hz_mesh::service::run as mesh_run;
 use hz_cb::service::run as cb_run;
 use ccmesg::service::run as ccmesg_run;
+use ccmesgbox::service::run as ccmeshbox_run;
 use std::io::Write;
 use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt};
 

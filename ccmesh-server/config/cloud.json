@@ -1,6 +1,7 @@
 {
     "NLAMBDA": 3,
-    "PEERS": ["big20", "big21", "big22"],
+    "PEERS": ["big12", "big13", "big14"],
     "MAXKEY": 100000,
-    "REDISIP": "big1"
+    "REDISIP": "big1",
+    "GATEWAY": "big10:8080"
 }

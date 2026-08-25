@@ -17,6 +17,8 @@ pub const MODE: &str = {
         "cb"
     } else if cfg!(feature = "ccmesg") {
         "ccmesg"
+    } else if cfg!(feature = "ccmesgbox") {
+        "ccmesgbox"
     } else {
         "unknown"
     }
