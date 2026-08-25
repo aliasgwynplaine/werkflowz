@@ -3,7 +3,7 @@ use hz_config::*;
 use hz_mesh::service::run as mesh_run;
 use hz_cb::service::run as cb_run;
 use ccmesg::service::run as ccmesg_run;
-use ccmesgbox::service::run as ccmeshbox_run;
+use ccmesgbox::service::run as ccmesgbox_run;
 use std::io::Write;
 use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt};
 
@@ -57,6 +57,8 @@ async fn main() {
         cb_run(cli.id).await;
     } else if MODE == "ccmesg" {
         ccmesg_run(cli.id).await;
+    } else if MODE == "ccmesgbox" {
+        ccmesgbox_run(cli.id).await;
     } else {
         panic!("unknown mode");
     }
