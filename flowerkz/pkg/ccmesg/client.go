@@ -451,7 +451,10 @@ outer:
 		for k, v := range op {
 			switch k {
 			case "T":
-				client.InitTxn()
+				b := int(v.(float64))
+				if b > 0 {
+					client.InitTxn()
+				}
 				var err error
 				ln, err = net.Listen("tcp", ":0")
 				CHECK(err)
@@ -535,6 +538,17 @@ outer:
 					defer conn.Close()
 					return nil
 				}
+			case "M":
+				i++
+				client.Workload = client.Workload[i:]
+
+				if rand.IntN(2) == 1 {
+					client.SendMessage(fmt.Sprintf("Entry1?t=%s", client.Tid), "Migration", true)
+				} else {
+					client.SendMessage(fmt.Sprintf("Entry2?t=%s", client.Tid), "Migration", true)
+				}
+
+				return nil
 			case "C":
 				client.CommitTxn()
 				conn, err := net.Dial("tcp", client.ReturnAdr)
@@ -548,7 +562,7 @@ outer:
 	}
 
 	if ln != nil {
-		fmt.Println(client.Tid, "- Wait for result.")
+		//fmt.Println(client.Tid, "- Wait for result.")
 		c, err := ln.Accept()
 
 		if err != nil {
