@@ -73,6 +73,24 @@ lazy_static! {
 
         res
     };
+    static ref WORKLOADSLONG: Vec<Workload> = {
+        let mut res = vec![];
+        let mut builder = WorkloadBuilder::default()
+            .num_read(2)
+            .num_write(1)
+            .init_tx()
+            .zipf(1.0);
+
+        for _ in 0..1000000 {
+            res.push(builder.build_seq());
+        }
+
+        res
+    };
+}
+
+pub fn get_long_work() -> Workload {
+    WORKLOADSLONG[rand::random::<usize>() % WORKLOADSLONG.len()].clone()
 }
 
 pub fn get_2103() -> Workload {

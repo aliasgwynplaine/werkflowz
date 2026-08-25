@@ -7,7 +7,7 @@ pub enum Op {
     R(String),
     W(String, String),
     T(i32),
-    M,
+    M(i32),
     J(i32),
     I(i32),
     O(i32),
@@ -96,6 +96,27 @@ impl WorkloadBuilder {
         self
     }
 
+    pub fn build_seq(&mut self) -> Workload {
+        let mut ops = vec![];
+        let nlambda = 10;
+        ops.push(Op::T(0));
+
+        for _ in 0..nlambda {
+            for _ in 0..self.nr {
+                ops.push(Op::R(self.sample()));
+            }
+    
+            for _ in 0..self.nw {
+                ops.push(Op::W(self.sample(), format!("{:0>8}", self.sample())))
+            }
+    
+            ops.push(Op::M(0));
+        }
+
+        ops.push(Op::C("".to_string()));
+        ops
+    }
+
     pub fn build(&mut self) -> Workload {
         assert!(self.nr + self.nw + self.nm > 0, "num must be positive");
         let mut ops = vec![];
@@ -105,7 +126,7 @@ impl WorkloadBuilder {
         }
 
         for _ in 0..self.nm {
-            ops.push(Op::M);
+            ops.push(Op::M(0));
         }
 
         if self.delay_writes {
@@ -127,10 +148,10 @@ impl WorkloadBuilder {
             
             for _ in 0..self.no {
                 let mut tmp = vec![];
-                //let limit = 0;//(self.sample_int() % 3) + 1;
-                //for _ in 0..limit {
-                //    tmp.push(Op::R(self.sample()));
-                //}
+                let limit = 1;//(self.sample_int() % 3) + 1;
+                for _ in 0..limit {
+                    tmp.push(Op::R(self.sample()));
+                }
 
                 let limit = 1;//(self.sample_int() % 3) + 1;
 
@@ -177,7 +198,7 @@ mod tests {
                 Op::W(_, _) => {
                     writing = true;
                 }
-                Op::M => {
+                Op::M(_) => {
                     assert!(!writing)
                 }
                 _ => {
