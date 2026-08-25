@@ -548,7 +548,7 @@ outer:
 					client.SendMessage(fmt.Sprintf("Entry2?t=%s", client.Tid), "Migration", true)
 				}
 
-				return nil
+				break outer
 			case "C":
 				client.CommitTxn()
 				conn, err := net.Dial("tcp", client.ReturnAdr)
