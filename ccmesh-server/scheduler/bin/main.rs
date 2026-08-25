@@ -63,6 +63,7 @@ async fn main() {
         "mesh" => {}
         "cb" => hz_cb::goclient::setup_clients(),
         "ccmesg" => {},
+        "ccmesgbox" => {},
         _ => panic!("unknown mode or not implemented"),
     }
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
