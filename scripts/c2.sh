@@ -7,7 +7,7 @@ usage () {
 	echo "usage: $0 <command> <opts>"
 	echo
 	echo "commands:"
-	echo "	deploy-nodes <nb> <h:mm:ss> <node-env-file> <db-env-file> <key-file>"
+	echo "	deploy-nodes <nb> <h:mm:ss> <node-env-file> <db-env-file> <key-file> <distr?>"
 	echo "	upload-infra <file.host>"
 	echo "	upload <file> <host>"
 	echo "	upload-to-hosts <file> <file.host>"
@@ -24,6 +24,8 @@ usage () {
 	echo "	ccmesh-server-build <workers.host>"
 	echo "	ccmesh-server-run <workers.host>"
 	echo "	run-scheduler <scheduler.host>"
+	echo "	verify-redis <redis.host>"
+	echo "	verify-cache-servers <workers.host>"
 	echo "	hit <gateway.host> <func_name> <data>"
 	echo "	remote-kill <file.host> <procname>"
 	echo "	retrieve-logs <deploynodes.host> <experiment>"
@@ -96,12 +98,12 @@ COMMAND=$1
 
 case "$COMMAND" in
 deploy-nodes)
-	if [ $# -ne 6 ]; then
+	if [ $# -lt 6 ]; then
 		usage
 		exit 5
 	fi
 
-	bash deploy_nodes.sh $2 $3 $4 $5 $6
+	bash deploy_nodes.sh $2 $3 $4 $5 $6 $7
 	;;
 
 upload-infra)
@@ -352,6 +354,69 @@ remote-kill)
 	done
 	
 	sleep 1
+	;;
+
+verify-redis)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 2
+	fi
+
+	mapfile -t redis < $2
+
+	while ! nc -z $redis 28080; do
+		echo -n  "."
+		sleep 3
+	done
+
+	;;
+
+verify-cache-servers)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 2
+	fi
+
+	mapfile -t workers < $2
+	gtfo=0
+	nb=${#workers[@]}
+
+	while [[ $gtfo -lt $nb ]]; do
+		for wrkr in ${workers[@]}; do
+			echo -n "Verifying cache server at $wrkr... "	
+
+			if nc -z $wrkr 18080; then
+				gtfo=$(( gtfo + 1 ))
+				echo "ok!"
+			else 
+				echo "error"
+			fi
+		done
+
+		if [[ $gtfo -lt $nb  ]]; then
+			sleep 17
+		else
+			continue
+		fi
+
+		echo "Retrying..."
+	done
+
+	;;
+
+verify-scheduler)
+	if [ $# -ne 2 ]; then
+		usage
+		exit 2
+	fi
+
+	mapfile -t scheduler < $2
+
+	while ! nc -z $scheduler 3000; do
+		echo -n  "."
+		sleep 3
+	done
+
 	;;
 
 retrieve-logs)

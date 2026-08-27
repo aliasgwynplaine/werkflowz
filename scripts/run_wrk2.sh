@@ -5,12 +5,12 @@ if [ $# -ne 1 ]; then
 fi
 
 if [ ! -d "data" ]; then
-	echo "data folder not found. calling mkdir"
+	echo "[!] data folder not found. calling mkdir"
 	mkdir data
 fi
 
 rps=$1
-echo warming up
+echo "[*] Warming up"
 ./wrk2/wrk -t2 -c64 -d30 -R${rps} --latency http://127.0.0.1:3000 > /dev/null
-echo benchmarking
+echo "[*] Benchmarking"
 ./wrk2/wrk -t2 -c64 -d120 -R${rps} --latency http://127.0.0.1:3000 > data/${rps}_wrk2.txt
