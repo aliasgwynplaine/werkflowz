@@ -31,7 +31,7 @@
   },
   {
     "funcName": "Sink",
-    "funcId": 3,
+    "funcId": 6,
     "minWorkers": 64,
     "maxWorkers": 64
   }
