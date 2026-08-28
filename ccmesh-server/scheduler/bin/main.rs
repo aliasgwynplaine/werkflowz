@@ -91,11 +91,13 @@ async fn main() {
         _ => panic!("unknown mode or not implemented"),
     }
     if WERK == "seq" {
+        info!("linear payload!");
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 3000));
         let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(service_linear_distrib)) });
         let server = Server::bind(&addr).serve(make_svc);
         server.await.unwrap();
     } else if WERK == "fifo" {
+        info!("fi/fo payload!");
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 3000));
         let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(service_fi_fo_distrib)) });
         let server = Server::bind(&addr).serve(make_svc);
