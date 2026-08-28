@@ -399,9 +399,12 @@ func Run(input []byte) []byte {
 		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
 		if client.ReturnAdr != "" {
 			conn, err := net.Dial("tcp", client.ReturnAdr)
-			fmt.Println(err)
-			defer conn.Close()
-			conn.Write([]byte("Ok"))
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				defer conn.Close()
+				conn.Write([]byte("Ok"))
+			}
 		}
 	}
 	// else {
