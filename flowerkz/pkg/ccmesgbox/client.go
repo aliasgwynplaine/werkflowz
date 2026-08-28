@@ -394,9 +394,11 @@ func Run(input []byte) []byte {
 	envelope.Abort = client.Abort
 	envelopeStr, err := json.Marshal(envelope)
 	CHECK(err)
-	//if client.Abort {
-	//	fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
-	//} else {
+
+	if client.Abort {
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
+	}
+	// else {
 	//	fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(input))
 	//}
 	return envelopeStr
