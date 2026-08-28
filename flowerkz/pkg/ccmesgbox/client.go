@@ -450,6 +450,12 @@ outer:
 				//fmt.Println("WRITE")
 				vs := v.([]interface{})
 				client.Write(vs[0].(string), vs[1].(string))
+			case "M":
+				i++
+				client.Workload = client.Workload[i:]
+				n := rand.IntN(5) + 1
+				client.SendMessage(fmt.Sprintf("Entry%d?t=%s", n, client.Tid), "")
+				break outer
 			case "O":
 				//fmt.Println(client.Tid, "- FANOUT")
 				// handle fanout
@@ -484,11 +490,8 @@ outer:
 				for nb := 0; nb < grado; nb++ {
 					payload[nb] = append(payload[nb], workload[i:]...)
 					client.Workload = payload[nb]
-					if rand.IntN(2) == 1 {
-						client.SendMessage(fmt.Sprintf("Entry1?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb))
-					} else {
-						client.SendMessage(fmt.Sprintf("Entry2?t=%s&p=%s", client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb))
-					}
+					n := rand.IntN(5) + 1
+					client.SendMessage(fmt.Sprintf("Entry%d?t=%s&p=%s", n, client.Tid, fmt.Sprintf("fux_%d", nb)), fmt.Sprintf("fux_%d", nb))
 				}
 
 				break outer
