@@ -24,6 +24,16 @@ pub const MODE: &str = {
     }
 };
 
+pub const WERK: &str = {
+    if cfg!(feature = "seq") {
+        "seq"
+    } else if cfg!(feature = "fifo") {
+        "fifo"
+    } else {
+        "unknown"
+    }
+};
+
 fn main() {
     println!("cargo:rerun-if-changed=local.json");
     println!("cargo:rerun-if-changed=cloud.json");
@@ -46,6 +56,7 @@ fn main() {
         .collect::<Vec<String>>();
     let out: String = format!(
         "pub const MODE: &str = {:?};
+pub const WERK: &str = {:?};
 pub const T: usize = {};
 pub const NLAMBDA: usize = {};
 pub const PEERS: [&str; {}] = {:?};
@@ -54,6 +65,7 @@ pub const MAXKEY: i32 = {};
 pub const REDISIP: &str = {:?};
 pub const GATEWAY: &str = {:?};",
         MODE,
+        WERK,
         n_peers,
         config.NLAMBDA,
         n_peers,

@@ -16,8 +16,10 @@ serde.workspace = true
 serde_json.workspace = true
 
 [features]
-default = ["ccmesh"]
+default = ["ccmesh", "seq"]
 ccmesh = []
 ccmesg = []
 ccmesgbox = []
 cb = []
+seq = []
+fifo = []
