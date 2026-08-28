@@ -423,11 +423,9 @@ func Run(input []byte) []byte {
 	//	fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(input))
 	//}
 
-	res := Envelope{
-		Abort: client.Abort,
-	}
+	envelope.Abort = client.Abort
 
-	resStr, err := json.Marshal(res)
+	resStr, err := json.Marshal(envelope)
 	CHECK(err)
 
 	return resStr
@@ -539,6 +537,7 @@ outer:
 					return nil
 				}
 			case "M":
+				//fmt.Println("migration")
 				i++
 				client.Workload = client.Workload[i:]
 

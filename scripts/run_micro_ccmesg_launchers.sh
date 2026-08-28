@@ -5,7 +5,6 @@ fi
 
 oarid=$1
 mapfile -t workers < workers.$oarid
-
 echo "[*] Killing redis"
 ./c2.sh remote-kill redis.$oarid redis
 echo "[*] Killing cache servers... "
@@ -29,25 +28,20 @@ sleep 1
 ./c2.sh verify-scheduler scheduler.$oarid
 ./c2.sh verify-cache-servers workers.$oarid
 
+echo "[*] Restarting application: micro-ccmesh"
+./c2.sh kill-all-engines workers.$oarid
+./c2.sh kill-gateway gateway.$oarid
+./c2.sh kill-snitch gateway.$oarid
+
+./c2.sh run-gateway gateway.$oarid micro-ccmesg
+./c2.sh run-snitch gateway.$oarid
+
+sleep 5
+
+./c2.sh run-engines workers.$oarid micro-ccmesg gateway.$oarid
+
 for wrkr in ${workers[@]}; do
-	echo $wrkr > tmp.wrkr
-	
-	./c2.sh kill-all-engines tmp.wrkr
-	wait
-	
-	./c2.sh kill-gateway tmp.wrkr
-	wait
-	
-	sleep 2
-
-	./c2.sh run-gateway tmp.wrkr micro-ccmesg-box
-	./c2.sh run-engines tmp.wrkr micro-ccmesg-box tmp.wrkr
-	
-	sleep 1
-	
-	./c2.sh run-launcher $wrkr micro-ccmesg-box 1 tmp.wrkr
-	./c2.sh run-launcher $wrkr micro-ccmesg-box 2 tmp.wrkr
-	./c2.sh run-launcher $wrkr micro-ccmesg-box 3 tmp.wrkr
+	./c2.sh run-launcher $wrkr micro-ccmesg 1 gateway.$oarid
+	./c2.sh run-launcher $wrkr micro-ccmesg 2 gateway.$oarid
+	./c2.sh run-launcher $wrkr micro-ccmesg 3 gateway.$oarid
 done
-
-rm tmp.wrkr
