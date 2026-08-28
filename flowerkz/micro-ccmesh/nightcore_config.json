@@ -3,6 +3,9 @@
     "fprocess_mode": "go",
     "fuxmap": [
 	    "Entry1",
-        "Entry2"
+        "Entry2",
+        "Entry3",
+        "Entry4",
+        "Entry5"
     ]
 }

@@ -10,5 +10,23 @@
     "funcId": 2,
     "minWorkers": 64,
     "maxWorkers": 64
+  },
+  {
+    "funcName": "Entry3",
+    "funcId": 3,
+    "minWorkers": 64,
+    "maxWorkers": 64
+  },
+  {
+    "funcName": "Entry4",
+    "funcId": 4,
+    "minWorkers": 64,
+    "maxWorkers": 64
+  },
+  {
+    "funcName": "Entry5",
+    "funcId": 5,
+    "minWorkers": 64,
+    "maxWorkers": 64
   }
 ]

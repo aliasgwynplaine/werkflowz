@@ -4,6 +4,9 @@
     "fuxmap": [
         "Entry1",
         "Entry2",
-	"Sink"
+        "Entry3",
+        "Entry4",
+        "Entry5",
+	    "Sink"
     ]
 }
