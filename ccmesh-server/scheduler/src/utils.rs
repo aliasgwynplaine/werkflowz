@@ -119,16 +119,12 @@ pub fn get_21() -> Workload {
 
 pub async fn send_req(nightcore_idx: usize, req: String, uri: &str) -> Bytes {
     let nightcore;
+    let entry_nb = (rand::random::<usize>() % 5) + 1;
+
     if uri == "Entry" {
-        if rand::random() {
-            nightcore =
-                "http://".to_owned() + &NIGHTCORES[nightcore_idx].to_owned() + "/function/Entry1";
-                //"http://".to_owned() + &GATEWAY.to_owned() + "/function/Entry1";
-        } else {
-            nightcore =
-                "http://".to_owned() + &NIGHTCORES[nightcore_idx].to_owned() + "/function/Entry2";
-                //"http://".to_owned() + &GATEWAY.to_owned() + "/function/Entry2";
-        }
+        let path = format!("/function/Entry{}", entry_nb).to_owned();
+        nightcore =
+                "http://".to_owned() + &NIGHTCORES[nightcore_idx].to_owned() + &path;
     } else {
         nightcore =
             "http://".to_owned() + &NIGHTCORES[nightcore_idx].to_owned() + "/function/" + uri;
@@ -153,14 +149,12 @@ pub async fn send_req(nightcore_idx: usize, req: String, uri: &str) -> Bytes {
 
 pub async fn send_req_c(req: String, uri: &str) -> Bytes {
     let nightcore;
+    let entry_nb = (rand::random::<usize>() % 5) + 1;
+
     if uri == "Entry" {
-        if rand::random() {
-            nightcore =
-                "http://".to_owned() + &GATEWAY.to_owned() + "/function/Entry1";
-        } else {
-            nightcore =
-                "http://".to_owned() + &GATEWAY.to_owned() + "/function/Entry2";
-        }
+        let path = format!("/function/Entry{}", entry_nb).to_owned();
+        nightcore =
+                "http://".to_owned() + &GATEWAY.to_owned() + &path;
     } else {
         nightcore =
             "http://".to_owned() + &GATEWAY.to_owned() + "/function/" + uri;

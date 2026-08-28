@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap as HashMap;
 use std::collections::VecDeque;
 use std::convert::Infallible;
 
-pub async fn mesh_service_long_seq(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+pub async fn mesh_service_linear_central(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let nlambda = 10;
     let mut workloads = VecDeque::with_capacity(nlambda);
     {
@@ -45,7 +45,7 @@ pub async fn mesh_service_long_seq(_req: Request<Body>) -> Result<Response<Body>
     Ok(Response::new(Body::from("OK")))
 }
 
-pub async fn mesh_service_c(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+pub async fn mesh_service_fi_fo_central(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let grado = 4;
     let mut workloads = VecDeque::with_capacity(grado + 2);
     {
@@ -67,7 +67,6 @@ pub async fn mesh_service_c(_req: Request<Body>) -> Result<Response<Body>, Infal
 
         c.workload = workloads.pop_front().unwrap();
         let req = serde_json::to_string(&c).unwrap();
-        let idx = rand::random::<usize>() % T;
         let res = send_req_c(req, "Entry").await;
         let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
 
@@ -86,7 +85,6 @@ pub async fn mesh_service_c(_req: Request<Body>) -> Result<Response<Body>, Infal
             {
                 let req = requests.pop().unwrap();
                 async move {
-                    let idx = rand::random::<usize>() % T;
                     let res = send_req_c(req, "Entry").await;
                     let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
                     res_c
@@ -95,7 +93,6 @@ pub async fn mesh_service_c(_req: Request<Body>) -> Result<Response<Body>, Infal
             {
                 let req = requests.pop().unwrap();
                 async move {
-                    let idx = rand::random::<usize>() % T;
                     let res = send_req_c(req, "Entry").await;
                     let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
                     res_c
@@ -147,7 +144,7 @@ pub async fn mesh_service_c(_req: Request<Body>) -> Result<Response<Body>, Infal
     Ok(Response::new(Body::from("Ok")))
 }
 
-pub async fn mesh_service_d(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+pub async fn mesh_service_fi_fo_distrib(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let grado = 4;
     let mut workloads = VecDeque::with_capacity(grado + 2);
     {
@@ -207,6 +204,7 @@ pub async fn mesh_service_d(_req: Request<Body>) -> Result<Response<Body>, Infal
             {
                 let req = requests.pop().unwrap();
                 async move {
+                    let idx = rand::random::<usize>() % T;
                     let res = send_req(idx, req, "Entry").await;
                     let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
                     res_c
@@ -215,6 +213,7 @@ pub async fn mesh_service_d(_req: Request<Body>) -> Result<Response<Body>, Infal
             {
                 let req = requests.pop().unwrap();
                 async move {
+                    let idx = rand::random::<usize>() % T;
                     let res = send_req(idx, req, "Entry").await;
                     let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
                     res_c
