@@ -2,6 +2,7 @@ use crate::utils::*;
 use hz_config::*;
 use hyper::{Body, Request, Response};
 use ccmesgbox::goclient::Envelope;
+use tracing::info;
 use std::convert::Infallible;
 use std::net::TcpListener;
 use std::io::Read;
@@ -40,16 +41,28 @@ pub async fn mesgbox_service_linear_distrib(_req: Request<Body>) -> Result<Respo
         let _res = send_req(idx, req, "Entry").await;
 
         let (mut res_stream, _) = listener.accept().unwrap();
-        let mut buf = [0u8, 4];
-        let nb = res_stream.read(&mut buf).unwrap();        
+        let mut buf = [0u8, 8];
+        let nb = res_stream.read(&mut buf).unwrap();     
+        //info!("r: {:?}", buf[..nb]);   
 
         if nb > 0 {
-            let rv = buf[0];
     
-            if rv == 0 { // abort
-                continue;
+            match std::str::from_utf8(&buf[..nb]) {
+            Ok(text) => {
+                let trimmed = text.trim();
+                if trimmed == "0" {
+                    println!("abort");
+                } else {
+                    println!("succeed");
+                }
             }
+            Err(_) => {
+                // Not valid UTF-8 -- treat as non-zero/succeed, or handle as you prefer
+                println!("succeed");
+            }
+        }
         } else {
+            info!("uu");
             continue;
         }
         
