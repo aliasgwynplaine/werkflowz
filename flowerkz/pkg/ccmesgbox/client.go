@@ -392,7 +392,7 @@ func Run(input []byte) []byte {
 	InitRPCClient(client)
 
 	client.OpenEnvelope(envelope)
-	//fmt.Println(client.Tid, "- inputstr: ", string(input))
+	fmt.Println(client.Tid, "- inputstr: ", string(input))
 	client.Execute()
 	// todo erase workload to avoid unnecessary serialization
 	envelope.Abort = client.Abort
