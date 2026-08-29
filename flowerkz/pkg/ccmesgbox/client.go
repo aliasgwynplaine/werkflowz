@@ -192,7 +192,7 @@ func (c *MeshGoClient) SendMessage(to string, v string) error {
 	data, err := json.Marshal(message)
 	CHECK(err)
 	output := bytes.NewBuffer(data)
-	//fmt.Println(c.Tid, "-", c.Fname, "- Sending request to: ", invokeurl)
+	fmt.Println(c.Tid, "-", c.Fname, "- Sending request to: ", invokeurl)
 
 	go func() {
 		//http.DefaultClient.Timeout = 1 * time.Second
@@ -200,15 +200,15 @@ func (c *MeshGoClient) SendMessage(to string, v string) error {
 		response, err := http.Post(invokeurl, "*/*", output) // invokation
 
 		if err != nil {
-			//fmt.Errorf(c.Tid, "-", c.Fname, "- returning uu ", err)
+			fmt.Errorf(c.Tid, "-", c.Fname, "- returning uu ", err)
 			return
 		}
 
-		//fmt.Println(c.Tid, "-", c.Fname, "- response: ", response)
+		fmt.Println(c.Tid, "-", c.Fname, "- response: ", response)
 		response.Body.Close()
 	}()
 
-	//fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
+	fmt.Println(c.Tid, "-", c.Fname, "- Message sent to ", to, "through ", invokeurl, " - payload:", v)
 
 	return nil
 }
@@ -418,7 +418,7 @@ func (client *MeshGoClient) AbortTxn() {
 		} else {
 			//fmt.Println(client.Tid, "-", client.Fname, "- Client is being notified.")
 			defer conn.Close()
-			conn.Write([]byte("Ok"))
+			conn.Write([]byte("0"))
 		}
 	}
 }
@@ -442,7 +442,7 @@ outer:
 			switch k {
 			case "T":
 				client.InitTxn()
-				//fmt.Println(client.Tid, "- init txn!")
+				fmt.Println(client.Tid, "- init txn!")
 				//var err error
 				//ln, err = net.Listen("tcp", ":0")
 				//CHECK(err)
@@ -451,14 +451,14 @@ outer:
 				caddr := lip[0].String() + ":" + client.Port
 				client.ReturnAdr = caddr
 			case "R":
-				//fmt.Println("READ")
+				fmt.Println("READ")
 				res := client.Read(v.(string))
 				if res == "None" {
 					client.Abort = true
 					client.AbortTxn()
 				}
 			case "W":
-				//fmt.Println("WRITE")
+				fmt.Println("WRITE")
 				vs := v.([]interface{})
 				client.Write(vs[0].(string), vs[1].(string))
 			case "M":
@@ -468,7 +468,7 @@ outer:
 				client.SendMessage(fmt.Sprintf("Entry%d?t=%s", n, client.Tid), "")
 				break outer
 			case "O":
-				//fmt.Println(client.Tid, "- FANOUT")
+				fmt.Println(client.Tid, "- FANOUT")
 				// handle fanout
 				grado := int(v.(float64))
 				payload := make([][]map[string]interface{}, grado)
@@ -539,14 +539,14 @@ outer:
 				}
 			case "C":
 				client.CommitTxn()
-				//fmt.Println(client.Tid, "- commit!")
+				fmt.Println(client.Tid, "- commit!")
 				conn, err := net.Dial("tcp", client.ReturnAdr)
 
 				if err != nil {
 					fmt.Errorf("error:", err)
 				} else {
 					defer conn.Close()
-					conn.Write([]byte("Ok"))
+					conn.Write([]byte("1"))
 				}
 
 				return nil
