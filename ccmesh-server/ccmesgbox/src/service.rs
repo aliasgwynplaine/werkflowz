@@ -48,7 +48,7 @@ pub struct CCMeshService {
     pub black: Mutex<Black>,
     pub vc: Mutex<VC>,
     pub next: flume::Sender<ServerWriteRequest>,
-    pub nextcc: flume::Sender<ServerCommitTxnRequest>,
+    //pub nextcc: flume::Sender<ServerCommitTxnRequest>,
     pub redis: Sender<M>,
 }
 
@@ -96,12 +96,12 @@ impl CCMeshService {
             }
         });
 
-        let (sendercc, receivercc) = flume::unbounded();
-        tokio::spawn(async move {
-            while let Ok(req) = receivercc.recv_async().await {
-                rpc_client().server_commit_txn(req).await.unwrap();
-            }
-        });
+        //let (sendercc, receivercc) = flume::unbounded();
+        //tokio::spawn(async move {
+        //    while let Ok(req) = receivercc.recv_async().await {
+        //        rpc_client().server_commit_txn(req).await.unwrap();
+        //    }
+        //});
 
         let addr = format!("http://{}", PEERS[(id + 1) % T]);
         let channel = tonic::transport::Channel::from_shared(addr)
@@ -141,7 +141,7 @@ impl CCMeshService {
             black: Mutex::new(black),
             vc: Mutex::new(VC::default()),
             next: sender,
-            nextcc: sendercc,
+            //nextcc: sendercc,
             redis: redis_sender,
         }
     }
@@ -558,15 +558,15 @@ impl Mesh for CCMeshService {
 
         //self.print_cache();
 
-        let next_req = ServerCommitTxnRequest {
-            writes: req.writes,
-            deps: serde_json::to_string(&deps).unwrap(),
-            vc: serde_json::to_string(&res).unwrap(),
-            headid: self.id as u32,
-            round: 1,
-        };
+        //let next_req = ServerCommitTxnRequest {
+        //    writes: req.writes,
+        //    deps: serde_json::to_string(&deps).unwrap(),
+        //    vc: serde_json::to_string(&res).unwrap(),
+        //    headid: self.id as u32,
+        //    round: 1,
+        //};
 
-        self.nextcc.send(next_req).unwrap();
+        //self.nextcc.send(next_req).unwrap();
 
         Ok(Response::new(ClientCommitTxnResponse {
             vc: serde_json::to_string(&res).unwrap(),
@@ -576,132 +576,132 @@ impl Mesh for CCMeshService {
 
     async fn server_commit_txn(
         &self,
-        request: Request<ServerCommitTxnRequest>,
+        _request: Request<ServerCommitTxnRequest>,
     ) -> Result<Response<()>, Status> {
-        let mut req = request.into_inner();
-        let writes: HashMap<K, V> = serde_json::from_str(&req.writes).unwrap();
-
-        //info!("[{:?}] server_commit_txn. writes: {} round: {}", self.id, req.writes, req.round.clone());
-
-        if req.round == 3 {
-            if req.headid != ((self.id + 1) % T) as u32 {
-                /*
-                now we need to notify the others that it is safe to
-                integrate the write
-                */
-                let req_vc : VC = serde_json::from_str(&req.vc).unwrap();
-                //info!("[{:?}] integration phase! vc: {:?} req_vc: {:?}",
-                //    self.id, self.vc.lock().unwrap().clone(), req_vc.clone());
-
-                for (kk, _) in writes.iter() {
-                    //info!("[{:?}] integrating {:?}", self.id, kk.clone());
-                    let mut fk_deps = HashMap::default();
-                    fk_deps.insert(kk.clone(), req_vc.clone());
-                    self.pull_deps2(&fk_deps, kk.clone(), None);
-                }
-
-                //info!("[{:?}] server_commit_txn FINISHED! writes: {:?}", self.id, writes);
-                //self.print_cache();
-                self.nextcc.send(req).unwrap();
-
-                return Ok(Response::new(()));
-            } else {
-                return Ok(Response::new(()));
-            }
-        }
-
-        if req.headid != ((self.id + 1) % T) as u32 && req.round == 1 {
-            //info!("[{:?}] FIRST TIME! Adding to black", self.id);
-            let vc: VC = serde_json::from_str(&req.vc).unwrap();
-            let deps: HashMap<K, VC> = serde_json::from_str(&req.deps).unwrap();
-
-            {
-                let mut mg = self.black.lock().unwrap();
-
-                for (k, v) in writes.iter() {
-                    //info!("[{:?}] adding k: {} ,v: {}, vc: {:?}", self.id, k, v, vc.clone());
-                    let m: Meta<String, String, DenseVC<3>> = M {
-                        key: k.clone(),
-                        value: v.clone(),
-                        vc: vc.clone(),
-                        deps: deps.clone(),
-                    };
-                    
-                    match mg.entry(k.clone()) {
-                        Entry::Vacant(e) => {
-                            //info!("[{:?}] vacant. inserting", self.id);
-                            e.insert(vec![m]);
-                        }
-                        Entry::Occupied(mut e) => {
-                            //info!("[{:?}] occupied. pushing", self.id);
-                            //info!("[{:?}] avant push: e -> {:?}", self.id, e);
-                            e.get_mut().push(m);
-                            //info!("[{:?}] result: e -> {:?}", self.id, e);
-                        }
-                    }
-                }
-            }
-
-            //info!("[{:?}] writes added to the black and sending", self.id);
-            //self.print_cache();
-            self.nextcc.send(req).unwrap();
-
-            return Ok(Response::new(()));
-        }
-
-        if req.headid != ((self.id + 1) % T) as u32 {
-            //info!("[{:?}] simple fwd. writes: {:?}", self.id, writes);
-            //self.print_cache();
-            self.nextcc.send(req).unwrap();
-            return Ok(Response::new(()));
-        }
-
-        if req.headid == ((self.id + 1) %T) as u32 && req.round == 1 {
-            //info!("[{:?}] about start round 2. writes: {:?}", self.id, writes);
-            //self.print_cache();
-            req.round = 2;
-            self.nextcc.send(req).unwrap();
-            return Ok(Response::new(()));
-        }
-
-        /* if we're up to here, we're the tail */
-        let req_vc: VC = serde_json::from_str(&req.vc).unwrap();
-        let req_deps: HashMap<String, VC> = serde_json::from_str(&req.deps).unwrap();
-        let res_vc: VC;
-
-        {
-            let mut vc = self.vc.lock().unwrap();
-            vc.merge_into(&req_vc);
-            res_vc = vc.clone();
-        }
-
-        //info!("[{:?}] we're on the tail now. writes: {:?} vc: {:?}", self.id, writes, res_vc.clone());
-        /* 
-        According to the paper, all the write will share 
-        the dependency set. Right now, i will just iterate 
-        the write set while i make the integration for 
-        every key. 
-        */
-
-        for (kk, vv) in writes.iter() {
-            self.pull_deps2(
-                &req_deps,
-                kk.clone(),
-                Some(M {
-                    key: kk.clone(),
-                    value: vv.clone(),
-                    vc: res_vc.clone(),
-                    deps: HashMap::default(),
-                }),
-            );
-        }
-        
-        req.round = 3;
-        req.vc = serde_json::to_string(&res_vc).unwrap();
-        //info!("[{:?}] server_commit_end. writes: {:?} starting round {}", self.id, writes, req.round.clone());
-        self.nextcc.send(req).unwrap();
-        //self.print_cache();
-        
+    //    let mut req = request.into_inner();
+    //    let writes: HashMap<K, V> = serde_json::from_str(&req.writes).unwrap();
+//
+    //    //info!("[{:?}] server_commit_txn. writes: {} round: {}", self.id, req.writes, req.round.clone());
+//
+    //    if req.round == 3 {
+    //        if req.headid != ((self.id + 1) % T) as u32 {
+    //            /*
+    //            now we need to notify the others that it is safe to
+    //            integrate the write
+    //            */
+    //            let req_vc : VC = serde_json::from_str(&req.vc).unwrap();
+    //            //info!("[{:?}] integration phase! vc: {:?} req_vc: {:?}",
+    //            //    self.id, self.vc.lock().unwrap().clone(), req_vc.clone());
+//
+    //            for (kk, _) in writes.iter() {
+    //                //info!("[{:?}] integrating {:?}", self.id, kk.clone());
+    //                let mut fk_deps = HashMap::default();
+    //                fk_deps.insert(kk.clone(), req_vc.clone());
+    //                self.pull_deps2(&fk_deps, kk.clone(), None);
+    //            }
+//
+    //            //info!("[{:?}] server_commit_txn FINISHED! writes: {:?}", self.id, writes);
+    //            //self.print_cache();
+    //            self.nextcc.send(req).unwrap();
+//
+    //            return Ok(Response::new(()));
+    //        } else {
+    //            return Ok(Response::new(()));
+    //        }
+    //    }
+//
+    //    if req.headid != ((self.id + 1) % T) as u32 && req.round == 1 {
+    //        //info!("[{:?}] FIRST TIME! Adding to black", self.id);
+    //        let vc: VC = serde_json::from_str(&req.vc).unwrap();
+    //        let deps: HashMap<K, VC> = serde_json::from_str(&req.deps).unwrap();
+//
+    //        {
+    //            let mut mg = self.black.lock().unwrap();
+//
+    //            for (k, v) in writes.iter() {
+    //                //info!("[{:?}] adding k: {} ,v: {}, vc: {:?}", self.id, k, v, vc.clone());
+    //                let m: Meta<String, String, DenseVC<3>> = M {
+    //                    key: k.clone(),
+    //                    value: v.clone(),
+    //                    vc: vc.clone(),
+    //                    deps: deps.clone(),
+    //                };
+    //                
+    //                match mg.entry(k.clone()) {
+    //                    Entry::Vacant(e) => {
+    //                        //info!("[{:?}] vacant. inserting", self.id);
+    //                        e.insert(vec![m]);
+    //                    }
+    //                    Entry::Occupied(mut e) => {
+    //                        //info!("[{:?}] occupied. pushing", self.id);
+    //                        //info!("[{:?}] avant push: e -> {:?}", self.id, e);
+    //                        e.get_mut().push(m);
+    //                        //info!("[{:?}] result: e -> {:?}", self.id, e);
+    //                    }
+    //                }
+    //            }
+    //        }
+//
+    //        //info!("[{:?}] writes added to the black and sending", self.id);
+    //        //self.print_cache();
+    //        self.nextcc.send(req).unwrap();
+//
+    //        return Ok(Response::new(()));
+    //    }
+//
+    //    if req.headid != ((self.id + 1) % T) as u32 {
+    //        //info!("[{:?}] simple fwd. writes: {:?}", self.id, writes);
+    //        //self.print_cache();
+    //        self.nextcc.send(req).unwrap();
+    //        return Ok(Response::new(()));
+    //    }
+//
+    //    if req.headid == ((self.id + 1) %T) as u32 && req.round == 1 {
+    //        //info!("[{:?}] about start round 2. writes: {:?}", self.id, writes);
+    //        //self.print_cache();
+    //        req.round = 2;
+    //        self.nextcc.send(req).unwrap();
+    //        return Ok(Response::new(()));
+    //    }
+//
+    //    /* if we're up to here, we're the tail */
+    //    let req_vc: VC = serde_json::from_str(&req.vc).unwrap();
+    //    let req_deps: HashMap<String, VC> = serde_json::from_str(&req.deps).unwrap();
+    //    let res_vc: VC;
+//
+    //    {
+    //        let mut vc = self.vc.lock().unwrap();
+    //        vc.merge_into(&req_vc);
+    //        res_vc = vc.clone();
+    //    }
+//
+    //    //info!("[{:?}] we're on the tail now. writes: {:?} vc: {:?}", self.id, writes, res_vc.clone());
+    //    /* 
+    //    According to the paper, all the write will share 
+    //    the dependency set. Right now, i will just iterate 
+    //    the write set while i make the integration for 
+    //    every key. 
+    //    */
+//
+    //    for (kk, vv) in writes.iter() {
+    //        self.pull_deps2(
+    //            &req_deps,
+    //            kk.clone(),
+    //            Some(M {
+    //                key: kk.clone(),
+    //                value: vv.clone(),
+    //                vc: res_vc.clone(),
+    //                deps: HashMap::default(),
+    //            }),
+    //        );
+    //    }
+    //    
+    //    req.round = 3;
+    //    req.vc = serde_json::to_string(&res_vc).unwrap();
+    //    //info!("[{:?}] server_commit_end. writes: {:?} starting round {}", self.id, writes, req.round.clone());
+    //    self.nextcc.send(req).unwrap();
+    //    //self.print_cache();
+    //    
         Ok(Response::new(()))
     }
 
