@@ -103,7 +103,7 @@ type MeshGoClient struct {
 }
 
 func (c *MeshGoClient) SendMessageHashed(to string, v string) error {
-	fmt.Println(c.Tid, "-", c.Fname, " asking for ", to)
+	fmt.Println(c.Tid, "-", c.Fname, " h-asking for ", to)
 	host := GetHost(c.Tid, to) + ":8080"
 
 	invokeurl := "http://" + host + "/function/" + to
@@ -140,7 +140,7 @@ func (c *MeshGoClient) SendMessageHashed(to string, v string) error {
 }
 
 func (c *MeshGoClient) SendMessageSync(to string, v string, direct bool) error {
-	fmt.Println(c.Tid, "-", c.Fname, " asking for ", to)
+	fmt.Println(c.Tid, "-", c.Fname, " s-asking for ", to)
 	addr := getAddr() + ":8080"
 
 	invokeurl := "http://" + addr + "/function/" + to
@@ -552,6 +552,8 @@ outer:
 	}
 
 	if ln != nil {
+		fmt.Println(client.Tid, "- Waiting for commit")
+
 		c, err := ln.Accept()
 
 		if err != nil {
