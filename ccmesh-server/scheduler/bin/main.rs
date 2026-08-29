@@ -1,7 +1,7 @@
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
 use hz_config::*;
-use scheduler::mesh::{mesh_service_fi_fo_central, mesh_service_fi_fo_distrib, mesh_service_linear_central, mesh_service0, mesh_service2, mesh_service3};
+use scheduler::mesh::{mesh_service_fi_fo_central, mesh_service_fi_fo_distrib, mesh_service_linear_central, mesh_service_linear_distrib, mesh_service0, mesh_service2, mesh_service3};
 use scheduler::mesg::{mesg_service_long_seq, mesg_service_c, mesg_service};
 use scheduler::mesgbox::{mesgbox_service_fi_fo_central, mesgbox_service_fi_fo_distrib, mesgbox_service_linear_central, mesgbox_service_linear_distrib};
 use scheduler::cb::{cb_service, cb_service0, cb_service2, cb_service3};
@@ -22,7 +22,7 @@ async fn service_linear_central(_req: Request<Body>) -> Result<Response<Body>, I
 // distributed and sequential
 async fn service_linear_distrib(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
     match MODE {
-        "mesh" => mesh_service_linear_central(_req).await,
+        "mesh" => mesh_service_linear_distrib(_req).await,
         "ccmesg" => mesg_service_long_seq(_req).await,
         "ccmesgbox" => mesgbox_service_linear_distrib(_req).await,
         _ => panic!("unknown mode"),
