@@ -8,6 +8,45 @@ use rustc_hash::FxHashMap as HashMap;
 use std::collections::VecDeque;
 use std::convert::Infallible;
 
+pub async fn mesh_service_linear_distrib(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    let nlambda = 10;
+    let mut workloads = VecDeque::with_capacity(nlambda);
+    {
+        // let mut builder = get_builder(2, 0);
+        // for _ in 0..nlambda-1 {
+        //     workloads.push(builder.build());
+        // }
+        // let mut builder = get_builder(0, 1);
+        // workloads.push(builder.build());
+        for _ in 0..nlambda - 1 {
+            workloads.push_back(get_20());
+        }
+        workloads.push_back(get_01());
+    }
+    'outer: loop {
+        let mut c = GoClient::new();
+        let mut workloads = workloads.clone();
+        for i in 0..nlambda {
+            c.workload = workloads.pop_front().unwrap();
+            let idx = rand::random::<usize>() % T;
+            let req = serde_json::to_string(&c).unwrap();
+            let res = send_req(idx, req, "Entry").await;
+            let res_c = serde_json::from_slice::<GoClient>(&res).unwrap();
+            if res_c.abort {
+                continue 'outer;
+            }
+            if i != nlambda - 1 {
+                c.deps = res_c.deps;
+                c.local = res_c.local;
+            }
+        }
+        break;
+    }
+
+    Ok(Response::new(Body::from("OK")))
+}
+
+
 pub async fn mesh_service_linear_central(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let nlambda = 10;
     let mut workloads = VecDeque::with_capacity(nlambda);
