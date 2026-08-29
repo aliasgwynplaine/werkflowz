@@ -190,14 +190,15 @@ func (c *MeshGoClient) SendMessage(to string, v string) error {
 	data, err := json.Marshal(message)
 	CHECK(err)
 	output := bytes.NewBuffer(data)
-	fmt.Println(c.Tid, "-", c.Fname, "- Sending request to: ", invokeurl)
+	//fmt.Println(c.Tid, "-", c.Fname, "- Sending request to: ", invokeurl)
+
 	go func() {
 		//http.DefaultClient.Timeout = 1 * time.Second
 
 		response, err := http.Post(invokeurl, "*/*", output) // invokation
 
 		if err != nil {
-			fmt.Println(c.Tid, "-", c.Fname, "- returning uu ", err)
+			fmt.Errorf(c.Tid, "-", c.Fname, "- returning uu ", err)
 			return
 		}
 
@@ -388,7 +389,7 @@ func Run(input []byte) []byte {
 	InitRPCClient(client)
 
 	client.OpenEnvelope(envelope)
-	fmt.Println(client.Tid, "- Init Execution - inputstr: ", string(input))
+	fmt.Println(client.Tid, "- inputstr: ", string(input))
 	client.Execute()
 	// todo erase workload to avoid unnecessary serialization
 	envelope.Abort = client.Abort
@@ -396,9 +397,9 @@ func Run(input []byte) []byte {
 	CHECK(err)
 
 	if client.Abort {
-		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted! - ", string(input))
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted!")
 	} else {
-		fmt.Println(client.Tid, "-", client.Fname, "- Execution completed! - ", string(input))
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution completed!")
 	}
 	return envelopeStr
 }
@@ -423,7 +424,7 @@ func (client *MeshGoClient) Execute() []byte {
 	if client.Writes == nil || client.Deps == nil {
 		panic("client not init")
 	}
-	fmt.Println(client.Tid, " executing workload -> ", client.Workload)
+	fmt.Println(client.Tid, "- executing workload -> ", client.Workload)
 	workload := client.Workload
 	var ln net.Listener
 outer:
@@ -438,6 +439,7 @@ outer:
 			switch k {
 			case "T":
 				client.InitTxn()
+				fmt.Println(client.Tid, "- init txn!")
 				var err error
 				ln, err = net.Listen("tcp", ":0")
 				CHECK(err)
@@ -534,6 +536,7 @@ outer:
 				}
 			case "C":
 				client.CommitTxn()
+				fmt.Println(client.Tid, "- commit!")
 				conn, err := net.Dial("tcp", client.ReturnAdr)
 
 				if err != nil {
