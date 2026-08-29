@@ -81,7 +81,6 @@ type Envelope struct {
 	Writes    map[string]string        `json:"writes"`
 	Workload  []map[string]interface{} `json:"workload"`
 	ReturnAdr string                   `json:"return"`
-	Port      string                   `json:"port"`
 	Abort     bool                     `json:"abort"`
 }
 
@@ -94,7 +93,6 @@ type MeshGoClient struct {
 	Fname     string `json:"fname"`
 	Payload   string `json:"payload"`
 	ReturnAdr string `json:"return"`
-	Port      string `json:"port"`
 	interChan chan struct{}
 	/* causalmesh tcc */
 	Workload []map[string]interface{} `json:"workload"`
@@ -116,7 +114,6 @@ func (c *MeshGoClient) SendMessageHashed(to string, v string) error {
 		Writes:    c.Writes,
 		Workload:  c.Workload,
 		ReturnAdr: c.ReturnAdr,
-		Port:      c.Port,
 	}
 	data, err := json.Marshal(message)
 	CHECK(err)
@@ -372,7 +369,6 @@ func (c *MeshGoClient) OpenEnvelope(envelope Envelope) {
 	c.Writes = envelope.Writes
 	c.Workload = envelope.Workload
 	c.ReturnAdr = envelope.ReturnAdr
-	c.Port = envelope.Port
 
 	c.mu.Unlock()
 }
@@ -446,10 +442,10 @@ outer:
 				//var err error
 				//ln, err = net.Listen("tcp", ":0")
 				//CHECK(err)
-				lip, err := GetLocalIPv4()
-				CHECK(err)
-				caddr := lip[0].String() + ":" + client.Port
-				client.ReturnAdr = caddr
+				//lip, err := GetLocalIPv4()
+				//CHECK(err)
+				//caddr := lip[0].String() + ":" + client.Port
+				//client.ReturnAdr = caddr
 			case "R":
 				fmt.Println("READ")
 				res := client.Read(v.(string))

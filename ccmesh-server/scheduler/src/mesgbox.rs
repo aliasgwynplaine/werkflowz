@@ -4,8 +4,9 @@ use hyper::{Body, Request, Response};
 use ccmesgbox::goclient::Envelope;
 use tracing::info;
 use std::convert::Infallible;
-use std::net::TcpListener;
-use std::io::Read;
+use std::net::{IpAddr, TcpListener, UdpSocket};
+use std::io::{Read};
+use std::io;
 
 pub async fn mesgbox_service_linear_central(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let mut e = Envelope::new();
@@ -26,6 +27,14 @@ pub async fn mesgbox_service_linear_central(_req: Request<Body>) -> Result<Respo
     Ok(Response::new(Body::from("Ok")))
 }
 
+fn get_local_ip() -> io::Result<IpAddr> {
+    let socket = UdpSocket::bind("0.0.0.0:0")?;
+    // Doesn't need to be reachable; just used for route resolution.
+    socket.connect("8.8.8.8:80")?;
+    Ok(socket.local_addr()?.ip())
+}
+
+
 pub async fn mesgbox_service_linear_distrib(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let mut e = Envelope::new();
     e.workload = get_long_work();
@@ -34,7 +43,7 @@ pub async fn mesgbox_service_linear_distrib(_req: Request<Body>) -> Result<Respo
         
         let listener = TcpListener::bind("0.0.0.0:0").unwrap();
         let addr = listener.local_addr().unwrap();
-        e.port = format!("{}", addr.port());
+        e.returnadr = format!("{}:{}", get_local_ip().unwrap(), addr.port());
         
         let req = serde_json::to_string(&e).unwrap();
         let idx = rand::random::<usize>() % T;
