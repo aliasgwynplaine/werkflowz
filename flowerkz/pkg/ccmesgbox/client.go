@@ -87,13 +87,10 @@ type Envelope struct {
 type MeshGoClient struct {
 	Rpcc *MeshClient
 	/* messages */
-	mu        sync.Mutex
-	server    *http.Server
 	Tid       string `json:"tid"`
 	Fname     string `json:"fname"`
 	Payload   string `json:"payload"`
 	ReturnAdr string `json:"returnadr"`
-	interChan chan struct{}
 	/* causalmesh tcc */
 	Workload []map[string]interface{} `json:"workload"`
 	Writes   map[string]string        `json:"writes"`
@@ -240,8 +237,6 @@ func (c *MeshGoClient) recv(envelope Envelope) {
 
 func (c *MeshGoClient) deliver(envelope Envelope) {
 	//fmt.Println("Delivering ", envelope)
-	c.mu.Lock()
-
 	for k, vc := range envelope.Deps {
 		InsertOrMergeVC(&c.Deps, k, &vc)
 	}
@@ -259,7 +254,6 @@ func (c *MeshGoClient) deliver(envelope Envelope) {
 		c.Writes[k] = v
 	}
 
-	c.mu.Unlock()
 }
 
 func (client *MeshGoClient) Read(k string) string {
@@ -357,21 +351,16 @@ func NewMeshGoClient(fname string) *MeshGoClient {
 	client.Writes = make(map[string]string, 0)
 	client.Deps = make(map[string]VC, 0)
 	client.Fname = fname
-	client.interChan = make(chan struct{})
 
 	return &client
 }
 
 func (c *MeshGoClient) OpenEnvelope(envelope Envelope) {
-	c.mu.Lock()
-
 	c.Tid = envelope.Tid
 	c.Deps = envelope.Deps
 	c.Writes = envelope.Writes
 	c.Workload = envelope.Workload
 	c.ReturnAdr = envelope.ReturnAdr
-
-	c.mu.Unlock()
 }
 
 func Run(input []byte) []byte {
@@ -397,7 +386,7 @@ func Run(input []byte) []byte {
 	CHECK(err)
 
 	if client.Abort {
-		//fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted!")
+		fmt.Println(client.Tid, "-", client.Fname, "- Execution aborted!")
 	} else {
 		//fmt.Println(client.Tid, "-", client.Fname, "- Execution completed!")
 	}
