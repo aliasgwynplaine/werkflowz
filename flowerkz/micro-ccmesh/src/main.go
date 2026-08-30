@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"runtime"
+	"strconv"
+	"time"
 
 	"ccmeshclient/pkg/ccmesh"
 
@@ -43,7 +47,39 @@ func (h *Handler) Call(ctx context.Context, input []byte) ([]byte, error) {
 	res := ccmesh.Run(input)
 	return res, nil
 }
+func monitorGoroutines(pid string) error {
+	file, err := os.Create(pid + "_routines.txt")
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	fmt.Fprintln(file, "t,nb_goroutines")
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	start := time.Now()
+
+	for {
+		select {
+		case <-ticker.C:
+			elapsed := time.Since(start).Seconds()
+			n := runtime.NumGoroutine()
+
+			if _, err := fmt.Fprintf(file, "%.0f,%d\n", elapsed, n); err != nil {
+				return err
+			}
+		}
+	}
+}
 
 func main() {
 	faas.Serve(&funcHandlerFactory{})
+
+	pid := strconv.Itoa(os.Getpid())
+
+	go func() {
+		monitorGoroutines(pid)
+	}()
 }
