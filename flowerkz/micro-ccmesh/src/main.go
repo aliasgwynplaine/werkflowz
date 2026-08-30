@@ -75,11 +75,12 @@ func monitorGoroutines(pid string) error {
 }
 
 func main() {
-	faas.Serve(&funcHandlerFactory{})
 
 	pid := strconv.Itoa(os.Getpid())
 
 	go func() {
 		monitorGoroutines(pid)
 	}()
+
+	faas.Serve(&funcHandlerFactory{})
 }
