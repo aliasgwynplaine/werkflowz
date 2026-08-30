@@ -80,7 +80,7 @@ type Envelope struct {
 	Deps      map[string]VC            `json:"deps"`
 	Writes    map[string]string        `json:"writes"`
 	Workload  []map[string]interface{} `json:"workload"`
-	ReturnAdr string                   `json:"return"`
+	ReturnAdr string                   `json:"returnadr"`
 	Abort     bool                     `json:"abort"`
 }
 
@@ -92,7 +92,7 @@ type MeshGoClient struct {
 	Tid       string `json:"tid"`
 	Fname     string `json:"fname"`
 	Payload   string `json:"payload"`
-	ReturnAdr string `json:"return"`
+	ReturnAdr string `json:"returnadr"`
 	interChan chan struct{}
 	/* causalmesh tcc */
 	Workload []map[string]interface{} `json:"workload"`
@@ -144,12 +144,13 @@ func (c *MeshGoClient) SendMessageSync(to string, v string, direct bool) error {
 
 	invokeurl := "http://" + addr + "/function/" + to
 	message := Envelope{
-		Tid:      c.Tid,
-		Fname:    c.Fname,
-		Payload:  v,
-		Deps:     c.Deps,
-		Writes:   c.Writes,
-		Workload: c.Workload,
+		Tid:       c.Tid,
+		Fname:     c.Fname,
+		Payload:   v,
+		Deps:      c.Deps,
+		Writes:    c.Writes,
+		Workload:  c.Workload,
+		ReturnAdr: c.ReturnAdr,
 	}
 	data, err := json.Marshal(message)
 	CHECK(err)
