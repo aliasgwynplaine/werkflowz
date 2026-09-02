@@ -114,10 +114,7 @@ func NewMeshGoClient() *MeshGoClient {
 	InitClient()
 
 	if client.Rpcc == nil {
-		fmt.Println("newmeshgoclient: new rpcc")
 		client.Rpcc = RPCC
-	} else {
-		fmt.Println("newmeshgoclient: uu")
 	}
 
 	client.Local = make(map[string]*Meta)
@@ -139,6 +136,9 @@ func Run(input []byte) []byte {
 
 	client.Execute()
 	CHECK(err)
+	if client.Abort {
+		fmt.Println("Aborted")
+	}
 	clientStr, err := json.Marshal(client)
 	CHECK(err)
 	//fmt.Println(string(clientStr))
