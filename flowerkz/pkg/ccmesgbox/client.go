@@ -428,7 +428,7 @@ outer:
 			switch k {
 			case "T":
 				client.InitTxn()
-				fmt.Println(client.Tid, "- init txn!")
+				//fmt.Println(client.Tid, "- init txn!")
 				//var err error
 				//ln, err = net.Listen("tcp", ":0")
 				//CHECK(err)
@@ -437,14 +437,14 @@ outer:
 				//caddr := lip[0].String() + ":" + client.Port
 				//client.ReturnAdr = caddr
 			case "R":
-				fmt.Println("READ")
+				//fmt.Println("READ")
 				res := client.Read(v.(string))
 				if res == "None" {
 					client.Abort = true
 					client.AbortTxn()
 				}
 			case "W":
-				fmt.Println("WRITE")
+				//fmt.Println("WRITE")
 				vs := v.([]interface{})
 				client.Write(vs[0].(string), vs[1].(string))
 			case "M":
@@ -454,7 +454,7 @@ outer:
 				client.SendMessage(fmt.Sprintf("Entry%d?t=%s", n, client.Tid), "")
 				break outer
 			case "O":
-				fmt.Println(client.Tid, "- FANOUT")
+				//fmt.Println(client.Tid, "- FANOUT")
 				// handle fanout
 				grado := int(v.(float64))
 				payload := make([][]map[string]interface{}, grado)
@@ -527,7 +527,7 @@ outer:
 				}
 			case "C":
 				client.CommitTxn()
-				fmt.Println(client.Tid, "- commit!")
+				//fmt.Println(client.Tid, "- commit!")
 				conn, err := net.Dial("tcp", client.ReturnAdr)
 
 				if err != nil {
