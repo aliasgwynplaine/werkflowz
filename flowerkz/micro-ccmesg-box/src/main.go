@@ -61,6 +61,7 @@ func monitorGoroutines(pid string) error {
 	defer ticker.Stop()
 
 	start := time.Now()
+	prev := 0
 
 	for {
 		select {
@@ -68,9 +69,13 @@ func monitorGoroutines(pid string) error {
 			elapsed := time.Since(start).Seconds()
 			n := runtime.NumGoroutine()
 
-			if _, err := fmt.Fprintf(file, "%.0f,%d\n", elapsed, n); err != nil {
-				return err
+			if prev != n {
+				if _, err := fmt.Fprintf(file, "%.0f,%d\n", elapsed, n); err != nil {
+					return err
+				}
 			}
+
+			prev = n
 		}
 	}
 }

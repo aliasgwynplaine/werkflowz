@@ -501,26 +501,28 @@ outer:
 				return nil
 			case "I":
 				magicBox.mu.Lock()
+				box, ok := magicBox.box[client.Tid]
 
-				if box, ok := magicBox.box[client.Tid]; ok {
+				if ok {
+					magicBox.mu.Unlock()
 					//fmt.Println(client.Tid, "- caja: ", box.buf)
 
 					if box.append(client.Writes) {
 						//fmt.Println(client.Tid, "box completed!")
 						client.Writes = box.getWrites()
+						magicBox.mu.Lock()
 						delete(magicBox.box, client.Tid)
 						magicBox.mu.Unlock()
 						continue
 					} else {
-						magicBox.mu.Unlock()
 						return nil
 					}
 				} else {
 					magicBox.box[client.Tid] = newCaja(int(v.(float64)))
 					//fmt.Println(client.Tid, "new box!")
 					box = magicBox.box[client.Tid]
-					box.append(client.Writes)
 					magicBox.mu.Unlock()
+					box.append(client.Writes)
 					return nil
 				}
 			case "C":
